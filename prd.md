@@ -55,7 +55,7 @@ The DridCon Ticket Management System is designed to streamline the attendee veri
 
 1.  **Agent Login:** The Front Desk agent logs into the system using their provided credentials (received via email from the Admin).
 2.  **Attendee QR Code Presentation:** The agent requests the attendee to present their unique QR code (either on a mobile device or printed).
-3.  **QR Code Scan:** The agent uses a scanning device (e.g., a mobile application or a dedicated scanner integrated with the system) to scan the attendee's QR code.
+3.  **QR Code Scan:** The agent uses a scanning device (e.g., a mobile web application after logging into the system) to scan the attendee's QR code.
 4.  **System Validation & Feedback:**
     - **Valid QR Code (First Scan):**
       - The system validates the QR code.
