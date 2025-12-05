@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, Types } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 // User roles in the system
@@ -8,9 +8,26 @@ export enum UserRole {
   USER = 'user',
 }
 
+export enum TicketType {
+  STUDENT = 'Student Pass',
+  RESEARCHER_STANDARD = 'Researcher Standard',
+  RESEARCHER_PREMIUM = 'Researcher Premium',
+}
+
+export enum PaymentStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  DECLINED = 'declined',
+}
+
+export enum CheckInStatus {
+  NOT_CHECKED_IN = 'not-checked-in',
+  CHECKED_IN = 'checked-in',
+}
+
 // User interface extending Mongoose Document
 export interface IUser extends Document {
-  name?: string; // Made optional as some users might be invited with only email
+  name: string;
   email: string;
   password?: string;
   role: UserRole;
@@ -20,13 +37,15 @@ export interface IUser extends Document {
   inviteTokenExpires?: Date;
   lastLogin?: Date;
   createdAt: Date;
-  wallet: {
-    balance: number;
-  };
-  agentProfile?: {
-    allocatedFunds: number;
-    manager?: Types.ObjectId; // Optional, can be empty if not managed by an admin
-  };
+  phoneNumber?: string;
+  ticketType?: TicketType;
+  designation?: string;
+  qrCode?: string;
+  paymentStatus: PaymentStatus;
+  paymentProof?: string;
+  checkInStatus: CheckInStatus;
+  checkedInAt?: Date;
+  checkedInBy?: Schema.Types.ObjectId;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -36,6 +55,7 @@ const UserSchema: Schema<IUser> = new Schema(
     name: {
       type: String,
       trim: true,
+      required: [true, 'Name is required'],
     },
     email: {
       type: String,
@@ -78,21 +98,41 @@ const UserSchema: Schema<IUser> = new Schema(
       type: Date,
       default: Date.now,
     },
-    wallet: {
-      balance: {
-        type: Number,
-        default: 0,
-      },
+    phoneNumber: {
+      type: String,
+      trim: true,
     },
-    agentProfile: {
-      allocatedFunds: {
-        type: Number,
-        default: 0,
-      },
-      manager: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-      },
+    ticketType: {
+      type: String,
+      enum: Object.values(TicketType),
+    },
+    designation: {
+      type: String,
+      trim: true,
+    },
+    qrCode: {
+      type: String,
+    },
+    paymentStatus: {
+      type: String,
+      enum: Object.values(PaymentStatus),
+      default: PaymentStatus.PENDING,
+    },
+    paymentProof: {
+      type: String,
+    },
+    checkInStatus: {
+      type: String,
+      enum: Object.values(CheckInStatus),
+      default: CheckInStatus.NOT_CHECKED_IN,
+    },
+    checkedInAt: {
+      type: Date,
+    },
+
+    checkedInBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
     },
   },
   {
@@ -103,7 +143,8 @@ const UserSchema: Schema<IUser> = new Schema(
 UserSchema.index({ role: 1, isActive: 1 });
 
 UserSchema.pre<IUser>('save', async function (next) {
-  if (this.isModified('password') && this.password) { // Check if password is set and modified
+  if (this.isModified('password') && this.password) {
+    // Check if password is set and modified
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }

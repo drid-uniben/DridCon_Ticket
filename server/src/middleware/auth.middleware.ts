@@ -2,19 +2,20 @@ import { Request, Response, NextFunction } from 'express';
 import { UnauthorizedError, ForbiddenError } from '../utils/customErrors';
 import tokenService from '../services/token.service';
 import User, { IUser, UserRole } from '../model/user.model';
-import { Document } from 'mongoose'; // Import Document
 
 interface UserPayload {
   userId: string;
+  email: string;
+  role: UserRole;
 }
 
-export interface AuthenticatedRequest extends Request { // Exported interface
-  user: (IUser & Document);
+export interface AuthenticatedRequest extends Request {
+  user: IUser;
 }
 
 // Authenticate admin access token
 const authenticateAdminToken = async (
-  req: Request, // Changed from AuthRequest
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -35,20 +36,20 @@ const authenticateAdminToken = async (
       throw new UnauthorizedError('User not found');
     }
 
-    if (user.role !== 'admin') {
+    if (user.role !== UserRole.ADMIN) {
       throw new ForbiddenError('Access denied: Admin privileges required');
     }
 
-    (req as AuthenticatedRequest).user = user; // Cast here
+    (req as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     next(error);
   }
 };
 
-// Authenticate author access token
-const authenticateWasteAgentToken = async (
-  req: Request, // Changed from AuthRequest
+// Authenticate agent access token
+const authenticateAgentToken = async (
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -84,47 +85,9 @@ const authenticateWasteAgentToken = async (
   }
 };
 
-// Authenticate reviewer access token
-const authenticateWasteUserToken = async (
-  req: Request, // Changed from AuthRequest
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
-
-    if (!token) {
-      throw new UnauthorizedError('Access token required');
-    }
-
-    const payload = (await tokenService.verifyAccessToken(
-      token
-    )) as UserPayload;
-    const user = await User.findById(payload.userId);
-
-    if (!user) {
-      throw new UnauthorizedError('User not found');
-    }
-
-    if (user.role !== UserRole.USER) {
-      throw new ForbiddenError('Access denied: User privileges required');
-    }
-
-    if (!user.isActive) {
-      throw new UnauthorizedError('Your account is not active');
-    }
-
-    (req as AuthenticatedRequest).user = user;
-    next();
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Authenticate any valid user (admin or researcher)
+// Authenticate any valid admin or agent user
 const authenticateToken = async (
-  req: Request, // Changed from AuthRequest
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -145,28 +108,11 @@ const authenticateToken = async (
       throw new UnauthorizedError('User not found');
     }
 
-    if (!['admin', 'agent', 'user'].includes(user.role)) {
+    if (![UserRole.ADMIN, UserRole.AGENT, UserRole.USER].includes(user.role)) {
       throw new ForbiddenError('Invalid user role');
     }
 
     (req as AuthenticatedRequest).user = user;
-    next();
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Check article moderation permissions
-const authorizeModeration = async (
-  req: Request, // Changed from AuthRequest
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    if (! (req as AuthenticatedRequest).user || (req as AuthenticatedRequest).user.role !== 'admin') {
-      throw new ForbiddenError('Access denied: Admin privileges required');
-    }
-
     next();
   } catch (error) {
     next(error);
@@ -207,9 +153,7 @@ const rateLimiter = (limit: number, windowMs: number) => {
 
 export {
   authenticateAdminToken,
-  authenticateWasteAgentToken,
-  authenticateWasteUserToken,
+  authenticateAgentToken,
   authenticateToken,
-  authorizeModeration,
   rateLimiter,
 };

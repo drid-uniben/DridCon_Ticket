@@ -7,21 +7,33 @@ import {
 
 const router = express.Router();
 
-const adminRateLimiter = rateLimiter(2000, 60 * 60 * 1000); // Keep rate limiter for admin routes
+const adminRateLimiter = rateLimiter(2000, 60 * 60 * 1000);
 
 router.use(authenticateAdminToken);
 router.use(adminRateLimiter);
 
-// User Management Routes
-router.get('/users', adminController.getUsers); // New route for getting all users
+// Agent Management
+router.post('/agents', adminController.createAgent);
 
-// Agent Management Routes
-router.post('/agents/invite', adminController.inviteAgent);
-router.post('/agents/:agentId/allocate-funds', adminController.allocateFunds);
+// Attendee Management
+router.post('/attendees/manual', adminController.manualRegisterAttendee);
+router.post('/attendees/invite', adminController.inviteAttendee);
+router.get(
+  '/attendees/pending',
+  adminController.reviewSelfRegisteredAttendees
+);
+router.post(
+  '/attendees/:attendeeId/approve',
+  adminController.approveRegistration
+);
+router.post(
+  '/attendees/:attendeeId/decline',
+  adminController.declineRegistration
+);
+router.get('/attendees', adminController.getAllAttendees);
 
-// Withdrawal Management Routes
-router.get('/withdrawals', adminController.getWithdrawalRequests);
-router.post('/withdrawals/:withdrawalId/approve', adminController.approveWithdrawalRequest);
-router.post('/withdrawals/:withdrawalId/reject', adminController.rejectWithdrawalRequest);
+// Dashboard
+router.get('/dashboard', adminController.getDashboardData);
 
 export default router;
+

@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
-import User from '../model/user.model';
+import User, { UserRole, PaymentStatus } from '../model/user.model';
 import tokenService, { TokenPayload } from '../services/token.service'; // Import TokenPayload
 import { UnauthorizedError, BadRequestError } from '../utils/customErrors';
 import asyncHandler from '../utils/asyncHandler';
 import logger from '../utils/logger'; // Added
-// import { ObjectId, Document } from 'mongoose'; // Removed unused Document, ObjectId
 import jwt from 'jsonwebtoken'; // Added
 import { AuthenticatedRequest } from '../middleware/auth.middleware'; // Import AuthenticatedRequest
+import passwordGenerator from '../utils/passwordGenerator';
+import { sendAgentCredentials, sendTicketWithQR } from '../services/email.service';
+import { generateQRCode } from '../services/qr.service';
 
 interface IAuthResponse {
   success: boolean;
@@ -17,8 +19,6 @@ interface IAuthResponse {
     name?: string;
     email?: string;
     role?: string;
-    balance?: number;
-    allocatedFunds?: number;
   };
 }
 
@@ -71,50 +71,59 @@ class AuthController {
         name: user.name,
         email: user.email,
         role: user.role,
-        balance: user.wallet?.balance,
-        allocatedFunds: user.agentProfile?.allocatedFunds,
       },
     };
 
     res.json(response);
   });
 
-  signup = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { name, email, password, role = "user" } = req.body;
-  
-    if (!name || !email || !password) {
-      throw new BadRequestError("Name, email, and password are required.");
+  register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { name, email, password, phoneNumber, ticketType, designation } =
+      req.body;
+
+    // For now, we assume paymentProof is a string.
+    // TODO: Implement file upload middleware to handle payment proof uploads.
+    const paymentProof = req.body.paymentProof || '';
+
+    if (!name || !email || !password || !phoneNumber || !ticketType) {
+      throw new BadRequestError(
+        'Name, email, password, phone number, and ticket type are required.'
+      );
     }
-  
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      throw new BadRequestError("Email already registered.");
+      throw new BadRequestError('Email already registered.');
     }
-  
+
     // Create new user
     const user = await User.create({
       name,
       email,
       password,
-      role,
-      isActive: true, // NEW users should be active by default
+      phoneNumber,
+      ticketType,
+      designation,
+      paymentProof,
+      role: UserRole.USER,
+      isActive: true,
     });
-  
+
     // Generate tokens
     const tokens = tokenService.generateTokens({
       userId: String(user._id),
       email: user.email,
       role: user.role,
     });
-  
+
     // Save refresh token
     user.refreshToken = tokens.refreshToken;
     await user.save();
-  
+
     // Set cookie
     tokenService.setRefreshTokenCookie(res, tokens.refreshToken);
-  
+
     const response: IAuthResponse = {
       success: true,
       accessToken: tokens.accessToken,
@@ -123,13 +132,54 @@ class AuthController {
         name: user.name,
         email: user.email,
         role: user.role,
-        balance: user.wallet?.balance,
-        allocatedFunds: user.agentProfile?.allocatedFunds,
       },
     };
-  
+
     res.status(201).json(response);
   });
+
+  createAgent = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+      const { name, email } = req.body;
+
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new UnauthorizedError('You are not authorized to perform this action');
+      }
+
+      if (!name || !email) {
+        throw new BadRequestError('Name and email are required.');
+      }
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw new BadRequestError('Email already registered.');
+      }
+
+      const password = passwordGenerator(12);
+
+      const agent = await User.create({
+        name,
+        email,
+        password,
+        role: UserRole.AGENT,
+        isActive: true,
+      });
+
+      // Send credentials to agent via email
+      await sendAgentCredentials(email, password);
+
+      res.status(201).json({
+        success: true,
+        message: 'Agent created successfully.',
+        user: {
+          id: agent._id.toString(),
+          name: agent.name,
+          email: agent.email,
+          role: agent.role,
+        },
+      });
+    }
+  );
 
   refreshToken = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
@@ -161,14 +211,13 @@ class AuthController {
       const response: IAuthResponse = {
         success: true,
         accessToken: tokens.accessToken,
-        user: { // Return updated user info with refresh
-            id: user._id.toString(),
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            balance: user.wallet?.balance,
-            allocatedFunds: user.agentProfile?.allocatedFunds,
-        }
+        user: {
+          // Return updated user info with refresh
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       };
 
       res.status(200).json(response);
@@ -182,10 +231,10 @@ class AuthController {
       try {
         const decoded = jwt.decode(refreshToken) as TokenPayload; // Use jwt.decode here
         if (decoded && decoded.exp) {
-            await tokenService.blacklistToken(
-                refreshToken,
-                new Date(decoded.exp * 1000)
-            );
+          await tokenService.blacklistToken(
+            refreshToken,
+            new Date(decoded.exp * 1000)
+          );
         }
       } catch (error) {
         const errorMessage =
@@ -215,14 +264,48 @@ class AuthController {
           name: user.name,
           email: user.email,
           role: user.role,
-          balance: user.wallet?.balance,
-          allocatedFunds: user.agentProfile?.allocatedFunds,
         },
       };
 
       res.status(200).json(response);
     }
   );
+
+  completeRegistration = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { inviteToken, name, password, phoneNumber, ticketType, designation } = req.body;
+
+    if (!inviteToken || !name || !password || !phoneNumber || !ticketType) {
+      throw new BadRequestError('Invite token, name, password, phone number, and ticket type are required.');
+    }
+
+    const user = await User.findOne({ inviteToken, inviteTokenExpires: { $gt: new Date() } });
+
+    if (!user) {
+      throw new BadRequestError('Invalid or expired invite token.');
+    }
+
+    const { token, dataUrl } = await generateQRCode({ email: user.email });
+
+    user.name = name;
+    user.password = password;
+    user.phoneNumber = phoneNumber;
+    user.ticketType = ticketType;
+    user.designation = designation;
+    user.qrCode = token;
+    user.paymentStatus = PaymentStatus.CONFIRMED;
+    user.inviteToken = undefined;
+    user.inviteTokenExpires = undefined;
+    user.isActive = true;
+
+    await user.save();
+
+    await sendTicketWithQR(user.email, user.name, dataUrl);
+
+    res.status(200).json({
+      success: true,
+      message: 'Registration completed successfully.'
+    });
+  });
 }
 
 export default new AuthController();

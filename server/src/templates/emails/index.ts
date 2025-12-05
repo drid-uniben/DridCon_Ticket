@@ -1,8 +1,10 @@
 import { agentCredentialsTemplate } from './agentCredentials.template';
-import { withdrawalStatusTemplate } from './withdrawalStatus.template';
+import { attendeeInviteTemplate } from './invite.template';
+import { ticketTemplate } from './ticket.template';
 
 export {
   agentCredentialsTemplate,
-  withdrawalStatusTemplate,
+  attendeeInviteTemplate,
+  ticketTemplate,
 };
 

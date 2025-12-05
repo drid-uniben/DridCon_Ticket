@@ -3,7 +3,8 @@ import logger from '../utils/logger';
 import validateEnv from '../utils/validateEnv';
 import {
   agentCredentialsTemplate,
-  withdrawalStatusTemplate,
+  attendeeInviteTemplate,
+  ticketTemplate,
 } from '../templates/emails';
 
 validateEnv();
@@ -44,19 +45,18 @@ class EmailService {
     }
   }
 
-  async sendAgentCredentialsEmail(
+  async sendAgentCredentials(
     email: string,
-    name: string,
     password: string
   ): Promise<void> {
-    const loginUrl = `${this.frontendUrl}/auth/login`; // General login URL
+    const loginUrl = `${this.frontendUrl}/auth/login`; // Unified login
 
     try {
       await this.transporter.sendMail({
         from: this.emailFrom,
         to: email,
-        subject: 'Your EcoUNIBEN Agent Account Credentials',
-        html: agentCredentialsTemplate(name, email, password, loginUrl),
+        subject: 'Your DridCon Agent Account Credentials',
+        html: agentCredentialsTemplate(email, password, loginUrl),
       });
       logger.info(`Agent credentials email sent to: ${email}`);
     } catch (error) {
@@ -68,29 +68,57 @@ class EmailService {
     }
   }
 
-  async sendWithdrawalStatusEmail(
+  async sendTicketWithQR(
     email: string,
     name: string,
-    amount: number,
-    status: 'approved' | 'rejected'
+    qrCodeDataUrl: string
   ): Promise<void> {
-    const subject = `Your Withdrawal Request Has Been ${status === 'approved' ? 'Approved' : 'Rejected'}`;
-    
     try {
       await this.transporter.sendMail({
         from: this.emailFrom,
         to: email,
-        subject: subject,
-        html: withdrawalStatusTemplate(name, amount, status),
+        subject: 'Your DridCon Ticket and QR Code',
+        html: ticketTemplate(name),
+        attachments: [
+          {
+            filename: 'qrcode.png',
+            path: qrCodeDataUrl,
+            cid: 'qrcode',
+          },
+        ],
       });
-      logger.info(`Withdrawal status email (${status}) sent to: ${email}`);
+      logger.info(`Ticket with QR code sent to: ${email}`);
     } catch (error) {
       logger.error(
-        `Failed to send withdrawal status email (${status}):`,
+        'Failed to send ticket with QR code:',
         error instanceof Error ? error.message : 'Unknown error'
       );
+      throw error;
+    }
+  }
+
+  async sendAttendeeInvite(email: string, inviteToken: string): Promise<void> {
+    const registrationUrl = `${this.frontendUrl}/complete-registration?token=${inviteToken}`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.emailFrom,
+        to: email,
+        subject: 'Complete Your DridCon Registration',
+        html: attendeeInviteTemplate(registrationUrl),
+      });
+      logger.info(`Attendee invite sent to: ${email}`);
+    } catch (error) {
+      logger.error(
+        'Failed to send attendee invite:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
     }
   }
 }
 
-export default new EmailService();
+const emailService = new EmailService();
+
+export const { sendAgentCredentials, sendTicketWithQR, sendAttendeeInvite } = emailService;
+export default emailService;
