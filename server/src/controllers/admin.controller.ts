@@ -99,7 +99,7 @@ class AdminController {
         );
       }
 
-      const { token, dataUrl } = await generateQRCode({ email });
+      const { token, filePath } = await generateQRCode({ email });
 
       const attendee = await User.create({
         name,
@@ -113,7 +113,8 @@ class AdminController {
         role: UserRole.USER,
       });
 
-      await emailService.sendTicketWithQR(email, name, dataUrl);
+      const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+      await emailService.sendTicketWithQR(email, name, qrCodeUrl);
 
       res.status(201).json({
         success: true,
@@ -198,7 +199,7 @@ class AdminController {
         throw new BadRequestError('This registration is not pending approval.');
       }
 
-      const { token, dataUrl } = await generateQRCode({
+      const { token, filePath } = await generateQRCode({
         email: attendee.email,
       });
 
@@ -206,10 +207,11 @@ class AdminController {
       attendee.qrCode = token;
       await attendee.save();
 
+      const qrCodeUrl = `${process.env.API_URL}${filePath}`;
       await emailService.sendTicketWithQR(
         attendee.email,
         attendee.name,
-        dataUrl
+        qrCodeUrl
       );
 
       res.status(200).json({
