@@ -2,7 +2,7 @@ import type { CorsOptions } from 'cors';
 import type { HelmetOptions } from 'helmet';
 
 export const corsOptions: CorsOptions = {
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
   optionsSuccessStatus: 200,

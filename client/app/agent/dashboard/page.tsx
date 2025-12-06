@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
-import api from "@/lib/api"
-import { AxiosError } from "axios"
+import { scanApi } from "@/lib/api"
 
 type ScanResult = {
   id: string
@@ -59,8 +58,8 @@ export default function AgentDashboardPage() {
     setLastResult(null)
 
     try {
-      const res = await api.post("/scan/verify", { qrCode: qrInput })
-      const data = res.data.data || res.data
+      const res = await scanApi.scanQR(qrInput)
+      const data = res.data || res
 
       const result: ScanResult = {
         id: Date.now().toString(),
@@ -75,15 +74,12 @@ export default function AgentDashboardPage() {
       addToHistory(result)
     } catch (err) {
       let status: "already_scanned" | "invalid" = "invalid"
-      let errorMessage = "Invalid QR code"
-      let scannedBy = undefined
+      let scannedBy: string | undefined = undefined
 
-      if (err instanceof AxiosError) {
-        const resData = err.response?.data
-        errorMessage = resData?.message ?? errorMessage
-        if (errorMessage.toLowerCase().includes("already") || errorMessage.toLowerCase().includes("used")) {
+      if (err instanceof Error) {
+        const errorMessage = err.message.toLowerCase()
+        if (errorMessage.includes("already") || errorMessage.includes("used")) {
           status = "already_scanned"
-          scannedBy = resData?.scannedBy
         }
       }
 
@@ -117,9 +113,8 @@ export default function AgentDashboardPage() {
     localStorage.removeItem("scanHistory")
   }
 
-  function handleLogout() {
-    localStorage.removeItem("accessToken")
-    logout()
+  async function handleLogout() {
+    await logout()
     router.push("/login")
   }
 
