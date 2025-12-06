@@ -78,15 +78,15 @@ class AuthController {
   });
 
   register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { name, email, password, phoneNumber, ticketType, designation, department } =
+    const { name, email, phoneNumber, ticketType, designation, department } =
       req.body;
 
     // Handle file upload - multer stores the file info in req.file
     const paymentProof = req.file ? req.file.filename : '';
 
-    if (!name || !email || !password || !phoneNumber || !ticketType) {
+    if (!name || !email || !phoneNumber || !ticketType) {
       throw new BadRequestError(
-        'Name, email, password, phone number, and ticket type are required.'
+        'Name, email, phone number, and ticket type are required.'
       );
     }
 
@@ -96,11 +96,10 @@ class AuthController {
       throw new BadRequestError('Email already registered.');
     }
 
-    // Create new user
+    // Create new user (no password for attendees)
     const user = await User.create({
       name,
       email,
-      password,
       phoneNumber,
       ticketType,
       designation,
@@ -272,10 +271,10 @@ class AuthController {
   );
 
   completeRegistration = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { inviteToken, name, password, phoneNumber, ticketType, designation, department } = req.body;
+    const { inviteToken, name, phoneNumber, ticketType, designation, department } = req.body;
 
-    if (!inviteToken || !name || !password || !phoneNumber || !ticketType) {
-      throw new BadRequestError('Invite token, name, password, phone number, and ticket type are required.');
+    if (!inviteToken || !name || !phoneNumber || !ticketType) {
+      throw new BadRequestError('Invite token, name, phone number, and ticket type are required.');
     }
 
     const user = await User.findOne({ inviteToken, inviteTokenExpires: { $gt: new Date() } });
@@ -287,7 +286,6 @@ class AuthController {
     const { token, dataUrl } = await generateQRCode({ email: user.email });
 
     user.name = name;
-    user.password = password;
     user.phoneNumber = phoneNumber;
     user.ticketType = ticketType;
     user.designation = designation;

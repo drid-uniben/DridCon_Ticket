@@ -14,7 +14,7 @@ export default function FormPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [password, setPassword] = useState("")
+  // password removed per spec (attendees don't set passwords during registration)
   const [ticket, setTicket] = useState("Student Pass")
   const [designation, setDesignation] = useState("")
   const [department, setDepartment] = useState("")
@@ -94,7 +94,6 @@ export default function FormPage() {
       await authApi.register({
         name,
         email,
-        password,
         phoneNumber: phone,
         ticketType: ticket,
         designation,
@@ -106,7 +105,7 @@ export default function FormPage() {
       setName("")
       setEmail("")
       setPhone("")
-      setPassword("")
+  // password cleared in earlier versions; no longer used
       setTicket("Student Pass")
       setDesignation("")
       setDepartment("")
@@ -145,7 +144,7 @@ export default function FormPage() {
               <TextField label="Full Name" name="name" value={name} onChange={setName} required placeholder="John Doe" />
               <TextField label="Email" name="email" value={email} onChange={setEmail} required placeholder="you@example.com" />
               <TextField label="Phone Number" name="phone" value={phone} onChange={setPhone} required placeholder="080********" />
-              <TextField label="Password" name="password" value={password} onChange={setPassword} required placeholder="••••••••" type="password" />
+              {/* Password removed - attendees don't set a password during initial registration */}
               <TextField label="Designation" name="designation" value={designation} onChange={setDesignation} placeholder="e.g. PhD Student, Lecturer" />
               <TextField label="Department" name="department" value={department} onChange={setDepartment} placeholder="e.g. Computer Science" />
             </div>
