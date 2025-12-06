@@ -16,7 +16,7 @@ The DridCon Ticket Management System is designed to streamline the attendee veri
 
 #### 3.1.1. Scenario 1: Manual Registration by Admin
 
-1.  The Admin manually collects the attendee's information (Full Name, Email, Phone Number, Ticket Type, Designation Department).
+1.  The Admin manually collects the attendee's information (Full Name, Email, Phone Number, Ticket Type, Designation, Department).
 2.  The Admin creates a new attendee record in the admin dashboard.
 3.  The system generates a unique QR code for the attendee.
 4.  The system sends an email to the attendee containing their ticket information and the unique QR code.

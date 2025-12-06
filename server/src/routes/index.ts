@@ -2,7 +2,6 @@ import { Router } from 'express';
 import adminRoutes from './admin.routes';
 import authRoutes from './auth.routes';
 import scanRoutes from './scan';
-import agentRoutes from './agent.routes';
 
 const router = Router();
 
@@ -10,7 +9,6 @@ const router = Router();
 router.use('/admin', adminRoutes);
 router.use('/auth', authRoutes);
 router.use('/scan', scanRoutes);
-router.use('/agent', agentRoutes);
 
 // Root route
 router.get('/', (req, res) => {

@@ -51,7 +51,7 @@ class ScanController {
 
       attendee.checkInStatus = CheckInStatus.CHECKED_IN;
       attendee.checkedInAt = new Date();
-      attendee.checkedInBy = agent._id;
+      attendee.checkedInBy = agent._id as any;
       await attendee.save();
 
       logger.info(
@@ -79,7 +79,7 @@ class ScanController {
       }
 
       const history = await User.find({
-        checkedInBy: agent._id,
+        checkedInBy: agent._id as any,
         checkInStatus: CheckInStatus.CHECKED_IN,
       })
         .select('name email ticketType checkedInAt')

@@ -1,21 +1,27 @@
-import { styles } from './styles';
+import { containerStyles, cardStyles, headerStyles, paragraphStyles, buttonStyles } from './styles';
 
 export const attendeeInviteTemplate = (registrationUrl: string): string => {
+  const signatureStyle = `
+    font-style: italic;
+    color: #6b7280;
+    margin-top: 20px;
+  `;
+
   return `
-    <div style="${styles.container}">
-      <div style="${styles.card}">
-        <h1 style="${styles.heading}">DridCon Registration Invitation</h1>
-        <p style="${styles.paragraph}">Dear prospective attendee,</p>
-        <p style="${styles.paragraph}">
+    <div style="${containerStyles}">
+      <div style="${cardStyles}">
+        <h1 style="${headerStyles}">DridCon Registration Invitation</h1>
+        <p style="${paragraphStyles}">Dear prospective attendee,</p>
+        <p style="${paragraphStyles}">
           You have been invited to register for DridCon. Please click the link below to complete your registration:
         </p>
-        <p style="${styles.buttonContainer}">
-          <a href="${registrationUrl}" style="${styles.button}">Complete Registration</a>
+        <p style="${paragraphStyles}">
+          <a href="${registrationUrl}" style="${buttonStyles}">Complete Registration</a>
         </p>
-        <p style="${styles.paragraph}">
+        <p style="${paragraphStyles}">
           This link is valid for 24 hours.
         </p>
-        <p style="${styles.signature}">The DridCon Team</p>
+        <p style="${signatureStyle}">The DridCon Team</p>
       </div>
     </div>
   `;
