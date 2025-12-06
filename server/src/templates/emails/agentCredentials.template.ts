@@ -1,6 +1,16 @@
-import { containerStyles, cardStyles, headerStyles, paragraphStyles, buttonStyles } from './styles';
+import {
+  containerStyles,
+  cardStyles,
+  headerStyles,
+  paragraphStyles,
+  buttonStyles,
+} from './styles';
 
-export const agentCredentialsTemplate = (email: string, password: string, loginUrl: string): string => `
+export const agentCredentialsTemplate = (
+  email: string,
+  password: string,
+  loginUrl: string
+): string => `
   <div style="${containerStyles}">
     <div style="${cardStyles}">
       <h1 style="${headerStyles}">Your DridCon Agent Account</h1>
@@ -15,9 +25,6 @@ export const agentCredentialsTemplate = (email: string, password: string, loginU
         <strong>Email:</strong> ${email}<br/>
         <strong>Password:</strong> ${password}
       </div>
-      <p style="${paragraphStyles}">
-        We strongly recommend that you change your password after your first login.
-      </p>
       <a href="${loginUrl}" style="${buttonStyles}">Log in to your Account</a>
       <p style="font-size: 12px; color: #6b7280; margin-top: 30px;">
         If you did not expect this, you can safely ignore this email.
@@ -25,4 +32,3 @@ export const agentCredentialsTemplate = (email: string, password: string, loginU
     </div>
   </div>
 `;
-

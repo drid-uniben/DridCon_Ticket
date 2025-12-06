@@ -7,7 +7,7 @@ import logger from '../utils/logger'; // Added
 import jwt from 'jsonwebtoken'; // Added
 import { AuthenticatedRequest } from '../middleware/auth.middleware'; // Import AuthenticatedRequest
 import passwordGenerator from '../utils/passwordGenerator';
-import { sendAgentCredentials, sendTicketWithQR } from '../services/email.service';
+import emailService from '../services/email.service';
 import { generateQRCode } from '../services/qr.service';
 
 interface IAuthResponse {
@@ -165,7 +165,7 @@ class AuthController {
       });
 
       // Send credentials to agent via email
-      await sendAgentCredentials(email, password);
+      await emailService.sendAgentCredentials(email, password);
 
       res.status(201).json({
         success: true,
@@ -298,7 +298,7 @@ class AuthController {
 
     await user.save();
 
-    await sendTicketWithQR(user.email, user.name, dataUrl);
+    await emailService.sendTicketWithQR(user.email, user.name, dataUrl);
 
     res.status(200).json({
       success: true,

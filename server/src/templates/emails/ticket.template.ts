@@ -1,21 +1,11 @@
-import { containerStyles, cardStyles, headerStyles, paragraphStyles } from './styles';
+import {
+  containerStyles,
+  cardStyles,
+  headerStyles,
+  paragraphStyles,
+} from './styles';
 
-export const ticketTemplate = (name: string): string => {
-  const qrCodeStyle = `
-    display: block;
-    margin: 20px auto;
-    width: 250px;
-    height: 250px;
-  `;
-
-  const highlightBoxStyle = `
-    background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-    padding: 20px;
-    border-radius: 12px;
-    margin: 20px 0;
-    text-align: center;
-  `;
-
+export const ticketTemplate = (name: string, qrCodeDataUrl: string): string => {
   const eventDetailsStyle = `
     background: #f3f4f6;
     padding: 20px;
@@ -40,19 +30,18 @@ export const ticketTemplate = (name: string): string => {
   return `
     <div style="${containerStyles}">
       <div style="${cardStyles}">
-        <div style="${highlightBoxStyle}">
-          <img src="cid:qrcode" alt="QR Code" style="${qrCodeStyle}" />
-          <p style="color: white; font-size: 14px; margin-top: 10px; margin-bottom: 0;">
-            <strong>Present this QR code at the entrance</strong>
-          </p>
-        </div>
-
         <h1 style="${headerStyles}">DridCon 2024 Ticket</h1>
         <p style="${paragraphStyles}">Dear ${name},</p>
+        <p style="${paragraphStyles}">Thank you for registering for DridCon 2026. Please find your ticket details below.</p>
         
+        <div style="text-align: center; margin: 20px 0;">
+          <p style="${paragraphStyles}"><strong>Present this QR code at the entrance</strong></p>
+          <img src="${qrCodeDataUrl}" alt="QR Code" style="width: 250px; height: 250px;" />
+        </div>
+
         <div style="${eventDetailsStyle}">
-          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research, Innovation & Enterprise Conference</p>
-          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> UNIBEN Campus</p>
+          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research, Development & Innovation Conference</p>
+          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, UNIBEN</p>
           <p style="margin: 0;"><strong>Important:</strong> Bring this QR code (digital or printed)</p>
         </div>
 
@@ -66,10 +55,10 @@ export const ticketTemplate = (name: string): string => {
         
         <div style="${footerStyle}">
           <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">
-            For inquiries: journal@uniben.edu
+            For inquiries: drid@uniben.edu
           </p>
           <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">
-            Visit: https://sites.google.com/uniben.edu/dridrecon
+            Visit for more information: https://sites.google.com/uniben.edu/dridrecon
           </p>
         </div>
       </div>

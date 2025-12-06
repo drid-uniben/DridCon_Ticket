@@ -1,6 +1,14 @@
-import { containerStyles, cardStyles, headerStyles, paragraphStyles } from './styles';
+import {
+  containerStyles,
+  cardStyles,
+  headerStyles,
+  paragraphStyles,
+} from './styles';
 
-export const paymentReminderTemplate = (name: string, amount: string): string => {
+export const paymentReminderTemplate = (
+  name: string,
+  amount: string
+): string => {
   const paymentBoxStyle = `
     background: #fef3c7;
     padding: 20px;
@@ -55,7 +63,7 @@ export const paymentReminderTemplate = (name: string, amount: string): string =>
         
         <div style="${footerStyle}">
           <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">
-            For inquiries: journal@uniben.edu
+            For inquiries: drid@uniben.edu
           </p>
           <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">
             Visit: https://sites.google.com/uniben.edu/dridrecon

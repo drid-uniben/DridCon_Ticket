@@ -9,11 +9,7 @@ import {
 } from '../utils/customErrors';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import passwordGenerator from '../utils/passwordGenerator';
-import {
-  sendAgentCredentials,
-  sendAttendeeInvite,
-  sendTicketWithQR,
-} from '../services/email.service';
+import emailService from '../services/email.service';
 import { generateQRCode } from '../services/qr.service';
 import crypto from 'crypto';
 
@@ -45,7 +41,7 @@ class AdminController {
         isActive: true,
       });
 
-      await sendAgentCredentials(agent.email, generatedPassword);
+      await emailService.sendAgentCredentials(agent.email, generatedPassword);
 
       logger.info(
         `Admin ${req.user._id} created new agent: ${agent._id} (${agent.email})`
@@ -63,9 +59,26 @@ class AdminController {
     }
   );
 
+  getAgents = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (req.user?.role !== UserRole.ADMIN) {
+      throw new ForbiddenError('Only administrators can view agents.');
+    }
+
+    const agents = await User.find({ role: UserRole.AGENT }).sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      count: agents.length,
+      data: agents,
+    });
+  });
+
   manualRegisterAttendee = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
-      const { name, email, phoneNumber, ticketType, designation, department } = req.body;
+      const { name, email, phoneNumber, ticketType, designation, department } =
+        req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError(
@@ -81,7 +94,9 @@ class AdminController {
 
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        throw new BadRequestError('An attendee with this email already exists.');
+        throw new BadRequestError(
+          'An attendee with this email already exists.'
+        );
       }
 
       const { token, dataUrl } = await generateQRCode({ email });
@@ -98,7 +113,7 @@ class AdminController {
         role: UserRole.USER,
       });
 
-      await sendTicketWithQR(email, name, dataUrl);
+      await emailService.sendTicketWithQR(email, name, dataUrl);
 
       res.status(201).json({
         success: true,
@@ -136,7 +151,7 @@ class AdminController {
         isActive: false, // User is not active until they complete registration
       });
 
-      await sendAttendeeInvite(email, inviteToken);
+      await emailService.sendAttendeeInvite(email, inviteToken);
 
       res.status(200).json({
         success: true,
@@ -169,7 +184,9 @@ class AdminController {
       const { attendeeId } = req.params;
 
       if (req.user?.role !== UserRole.ADMIN) {
-        throw new ForbiddenError('Only administrators can approve registrations.');
+        throw new ForbiddenError(
+          'Only administrators can approve registrations.'
+        );
       }
 
       const attendee = await User.findById(attendeeId);
@@ -181,13 +198,19 @@ class AdminController {
         throw new BadRequestError('This registration is not pending approval.');
       }
 
-      const { token, dataUrl } = await generateQRCode({ email: attendee.email });
+      const { token, dataUrl } = await generateQRCode({
+        email: attendee.email,
+      });
 
       attendee.paymentStatus = PaymentStatus.CONFIRMED;
       attendee.qrCode = token;
       await attendee.save();
 
-      await sendTicketWithQR(attendee.email, attendee.name, dataUrl);
+      await emailService.sendTicketWithQR(
+        attendee.email,
+        attendee.name,
+        dataUrl
+      );
 
       res.status(200).json({
         success: true,
@@ -202,7 +225,9 @@ class AdminController {
       const { attendeeId } = req.params;
 
       if (req.user?.role !== UserRole.ADMIN) {
-        throw new ForbiddenError('Only administrators can decline registrations.');
+        throw new ForbiddenError(
+          'Only administrators can decline registrations.'
+        );
       }
 
       const attendee = await User.findById(attendeeId);

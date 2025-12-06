@@ -14,6 +14,7 @@ router.use(adminRateLimiter);
 
 // Agent Management
 router.post('/agents', adminController.createAgent);
+router.get('/agents', adminController.getAgents);
 
 // Attendee Management
 router.post('/attendees/manual', adminController.manualRegisterAttendee);

@@ -45,11 +45,8 @@ class EmailService {
     }
   }
 
-  async sendAgentCredentials(
-    email: string,
-    password: string
-  ): Promise<void> {
-    const loginUrl = `${this.frontendUrl}/auth/login`; // Unified login
+  async sendAgentCredentials(email: string, password: string): Promise<void> {
+    const loginUrl = `${this.frontendUrl}/login`; // Unified login
 
     try {
       await this.transporter.sendMail({
@@ -78,14 +75,7 @@ class EmailService {
         from: this.emailFrom,
         to: email,
         subject: 'Your DridCon Ticket and QR Code',
-        html: ticketTemplate(name),
-        attachments: [
-          {
-            filename: 'qrcode.png',
-            path: qrCodeDataUrl,
-            cid: 'qrcode',
-          },
-        ],
+        html: ticketTemplate(name, qrCodeDataUrl),
       });
       logger.info(`Ticket with QR code sent to: ${email}`);
     } catch (error) {
@@ -120,5 +110,4 @@ class EmailService {
 
 const emailService = new EmailService();
 
-export const { sendAgentCredentials, sendTicketWithQR, sendAttendeeInvite } = emailService;
 export default emailService;
