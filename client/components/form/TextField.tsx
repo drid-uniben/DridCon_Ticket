@@ -8,13 +8,15 @@ type Props = {
   onChange: (v: string) => void
   required?: boolean
   placeholder?: string
+  type?: "text" | "email" | "password" | "tel" | "url" | "number"
 }
 
-export default function TextField({ label, name, value, onChange, required, placeholder }: Props) {
+export default function TextField({ label, name, value, onChange, required, placeholder, type = "text" }: Props) {
   return (
     <label className="flex w-full flex-col gap-2">
       <span className="text-sm font-medium">{label}{required ? " *" : ""}</span>
       <input
+        type={type}
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}

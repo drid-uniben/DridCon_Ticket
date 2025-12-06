@@ -7,27 +7,20 @@ import RadioField from "./RadioField"
 import FileField from "./FileField"
 import FormCard from "./FormCard"
 import { Button } from "@/components/ui/button"
-import api from "@/lib/api"
-import { useAuth } from "@/context/AuthContext"
+import { authApi } from "@/lib/api"
 import Logo from "@/components/Logo"
 
 export default function FormPage() {
-  const { user, login } = useAuth()
-
-  // prefill user if available (mock)
-  React.useEffect(() => {
-    if (!user) login({ name: "", email: "" })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [ticket, setTicket] = useState("student")
+  const [password, setPassword] = useState("")
+  const [ticket, setTicket] = useState("Student Pass")
+  const [designation, setDesignation] = useState("")
   const [department, setDepartment] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const descriptionSections: DescriptionSection[] = [
     {
@@ -97,24 +90,25 @@ export default function FormPage() {
     setMessage(null)
 
     try {
-      const form = new FormData()
-      form.append("name", name)
-      form.append("email", email)
-      form.append("phone", phone)
-      form.append("ticket", ticket)
-      form.append("department", department)
-      if (file) form.append("receipt", file)
-
-      // Example endpoint - replace with actual server route
-      await api.post("/forms/submit", form, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Use authApi.register with backend field names
+      await authApi.register({
+        name,
+        email,
+        password,
+        phoneNumber: phone,
+        ticketType: ticket,
+        designation,
+        department,
+        paymentProof: file || undefined,
       })
 
-      setMessage("Submitted successfully. Check your email for confirmation.")
+      setMessage({ type: 'success', text: 'Registration submitted successfully! Check your email for confirmation once payment is verified.' })
       setName("")
       setEmail("")
       setPhone("")
-      setTicket("student")
+      setPassword("")
+      setTicket("Student Pass")
+      setDesignation("")
       setDepartment("")
       setFile(null)
     } catch (err) {
@@ -126,7 +120,7 @@ export default function FormPage() {
         errorMessage = err.message
       }
 
-      setMessage(errorMessage)
+      setMessage({ type: 'error', text: errorMessage })
     } finally {
       setLoading(false)
     }
@@ -148,9 +142,11 @@ export default function FormPage() {
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <FormCard heading="Contact information" description="Tell us how to reach you.">
             <div className="space-y-4">
-              <TextField label="Name" name="name" value={name} onChange={setName} required placeholder="Full name" />
+              <TextField label="Full Name" name="name" value={name} onChange={setName} required placeholder="John Doe" />
               <TextField label="Email" name="email" value={email} onChange={setEmail} required placeholder="you@example.com" />
               <TextField label="Phone Number" name="phone" value={phone} onChange={setPhone} required placeholder="080********" />
+              <TextField label="Password" name="password" value={password} onChange={setPassword} required placeholder="••••••••" type="password" />
+              <TextField label="Designation" name="designation" value={designation} onChange={setDesignation} placeholder="e.g. PhD Student, Lecturer" />
               <TextField label="Department" name="department" value={department} onChange={setDepartment} placeholder="e.g. Computer Science" />
             </div>
           </FormCard>
@@ -162,9 +158,9 @@ export default function FormPage() {
               value={ticket}
               onChange={setTicket}
               options={[
-                { label: "Student Pass (₦1,000)", value: "student" },
-                { label: "Researcher Standard (₦3,000)", value: "standard" },
-                { label: "Researcher Premium (₦6,000)", value: "premium" },
+                { label: "Student Pass (₦1,000)", value: "Student Pass" },
+                { label: "Researcher Standard (₦3,000)", value: "Researcher Standard" },
+                { label: "Researcher Premium (₦6,000)", value: "Researcher Premium" },
               ]}
             />
           </FormCard>
@@ -181,9 +177,15 @@ export default function FormPage() {
           </FormCard>
 
           <FormCard>
-            {message && <p className="mb-4 text-sm text-zinc-700">{message}</p>}
+            {message && (
+              <div className={`mb-4 rounded-xl p-4 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <p className={`text-sm font-medium ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                  {message.text}
+                </p>
+              </div>
+            )}
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Submitting…" : "Submit"}
+              {loading ? "Submitting…" : "Complete Registration"}
             </Button>
           </FormCard>
         </form>

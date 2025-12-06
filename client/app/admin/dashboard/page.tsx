@@ -1,11 +1,10 @@
 "use client"
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
-import api from "@/lib/api"
-import { AxiosError } from "axios"
+import { adminApi } from "@/lib/api"
 
 type Attendee = {
   _id: string
@@ -42,14 +41,14 @@ export default function AdminDashboardPage() {
     name: "",
     email: "",
     phoneNumber: "",
-    ticketType: "student",
+    ticketType: "Student Pass",
     department: "",
   })
 
   // Invite form
   const [inviteForm, setInviteForm] = useState({
     email: "",
-    ticketType: "student",
+    ticketType: "Student Pass",
   })
 
   // Agent form
@@ -65,6 +64,30 @@ export default function AdminDashboardPage() {
     }
   }, [user, router])
 
+  const fetchAttendees = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await adminApi.getAllAttendees()
+      setAttendees(res.data || res || [])
+    } catch {
+      setMessage({ type: "error", text: "Failed to load attendees" })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchAgents = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await adminApi.getAgents()
+      setAgents(res.data || res || [])
+    } catch {
+      setMessage({ type: "error", text: "Failed to load agents" })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   // Fetch data based on active tab
   useEffect(() => {
     if (activeTab === "pending" || activeTab === "attendees") {
@@ -72,49 +95,22 @@ export default function AdminDashboardPage() {
     } else if (activeTab === "agents") {
       fetchAgents()
     }
-  }, [activeTab])
-
-  async function fetchAttendees() {
-    setLoading(true)
-    try {
-      const res = await api.get("/admin/attendees")
-      setAttendees(res.data.data || res.data || [])
-    } catch {
-      setMessage({ type: "error", text: "Failed to load attendees" })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function fetchAgents() {
-    setLoading(true)
-    try {
-      const res = await api.get("/admin/agents")
-      setAgents(res.data.data || res.data || [])
-    } catch {
-      setMessage({ type: "error", text: "Failed to load agents" })
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [activeTab, fetchAttendees, fetchAgents])
 
   async function approveAttendee(id: string) {
     try {
-      await api.post(`/admin/attendees/${id}/approve`)
+      await adminApi.approveRegistration(id)
       setMessage({ type: "success", text: "Attendee approved! QR code sent via email." })
       fetchAttendees()
     } catch (err) {
-      let errorMessage = "Failed to approve attendee"
-      if (err instanceof AxiosError) {
-        errorMessage = err.response?.data?.message ?? errorMessage
-      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to approve attendee"
       setMessage({ type: "error", text: errorMessage })
     }
   }
 
   async function declineAttendee(id: string) {
     try {
-      await api.post(`/admin/attendees/${id}/decline`)
+      await adminApi.declineRegistration(id)
       setMessage({ type: "success", text: "Attendee declined" })
       fetchAttendees()
     } catch {
@@ -126,16 +122,13 @@ export default function AdminDashboardPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post("/admin/attendees/manual", manualForm)
+      await adminApi.manualRegister(manualForm)
       setMessage({ type: "success", text: "Attendee registered! QR code sent via email." })
-      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "student", department: "" })
+      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "" })
       setActiveTab("attendees")
       fetchAttendees()
     } catch (err) {
-      let errorMessage = "Failed to register attendee"
-      if (err instanceof AxiosError) {
-        errorMessage = err.response?.data?.message ?? errorMessage
-      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to register attendee"
       setMessage({ type: "error", text: errorMessage })
     } finally {
       setLoading(false)
@@ -146,14 +139,11 @@ export default function AdminDashboardPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post("/admin/attendees/invite", inviteForm)
+      await adminApi.inviteAttendee(inviteForm)
       setMessage({ type: "success", text: "Invitation sent!" })
-      setInviteForm({ email: "", ticketType: "student" })
+      setInviteForm({ email: "", ticketType: "Student Pass" })
     } catch (err) {
-      let errorMessage = "Failed to send invitation"
-      if (err instanceof AxiosError) {
-        errorMessage = err.response?.data?.message ?? errorMessage
-      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to send invitation"
       setMessage({ type: "error", text: errorMessage })
     } finally {
       setLoading(false)
@@ -164,24 +154,20 @@ export default function AdminDashboardPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post("/admin/agents", agentForm)
+      await adminApi.createAgent(agentForm)
       setMessage({ type: "success", text: "Agent added! Credentials sent via email." })
       setAgentForm({ name: "", email: "" })
       fetchAgents()
     } catch (err) {
-      let errorMessage = "Failed to add agent"
-      if (err instanceof AxiosError) {
-        errorMessage = err.response?.data?.message ?? errorMessage
-      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to add agent"
       setMessage({ type: "error", text: errorMessage })
     } finally {
       setLoading(false)
     }
   }
 
-  function handleLogout() {
-    localStorage.removeItem("accessToken")
-    logout()
+  async function handleLogout() {
+    await logout()
     router.push("/login")
   }
 
@@ -424,9 +410,9 @@ export default function AdminDashboardPage() {
                   onChange={(e) => setManualForm({ ...manualForm, ticketType: e.target.value })}
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                 >
-                  <option value="student">Student Pass (₦1,000)</option>
-                  <option value="standard">Researcher Standard (₦3,000)</option>
-                  <option value="premium">Researcher Premium (₦6,000)</option>
+                  <option value="Student Pass">Student Pass (₦1,000)</option>
+                  <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+                  <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
                 </select>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Registering..." : "Register Attendee"}
@@ -454,9 +440,9 @@ export default function AdminDashboardPage() {
                   onChange={(e) => setInviteForm({ ...inviteForm, ticketType: e.target.value })}
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                 >
-                  <option value="student">Student Pass (₦1,000)</option>
-                  <option value="standard">Researcher Standard (₦3,000)</option>
-                  <option value="premium">Researcher Premium (₦6,000)</option>
+                  <option value="Student Pass">Student Pass (₦1,000)</option>
+                  <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+                  <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
                 </select>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Sending..." : "Send Invitation"}

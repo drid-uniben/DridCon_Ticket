@@ -1,12 +1,11 @@
 "use client"
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
-import api from "@/lib/api"
-import { AxiosError } from "axios"
+import { authApi } from "@/lib/api"
 
-export default function CompleteRegistrationPage() {
+function CompleteRegistrationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
@@ -16,7 +15,7 @@ export default function CompleteRegistrationPage() {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [ticketType, setTicketType] = useState("student")
+  const [ticketType, setTicketType] = useState("Student Pass")
   const [department, setDepartment] = useState("")
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(true)
@@ -32,8 +31,8 @@ export default function CompleteRegistrationPage() {
         return
       }
       try {
-        const res = await api.get(`/auth/verify-invite?token=${token}`)
-        const data = res.data.data || res.data
+        const res = await authApi.verifyInvite(token)
+        const data = res.data || res
         // Pre-fill email if provided
         if (data.email) setEmail(data.email)
         if (data.ticketType) setTicketType(data.ticketType)
@@ -57,7 +56,7 @@ export default function CompleteRegistrationPage() {
 
     setLoading(true)
     try {
-      await api.post("/auth/complete-registration", {
+      await authApi.completeRegistration({
         inviteToken: token,
         name,
         password,
@@ -67,10 +66,7 @@ export default function CompleteRegistrationPage() {
       })
       setSuccess(true)
     } catch (err) {
-      let errorMessage = "Registration failed. Please try again."
-      if (err instanceof AxiosError) {
-        errorMessage = err.response?.data?.message ?? errorMessage
-      }
+      const errorMessage = err instanceof Error ? err.message : "Registration failed. Please try again."
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -177,9 +173,9 @@ export default function CompleteRegistrationPage() {
               onChange={(e) => setTicketType(e.target.value)}
               className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
             >
-              <option value="student">Student Pass (₦1,000)</option>
-              <option value="standard">Researcher Standard (₦3,000)</option>
-              <option value="premium">Researcher Premium (₦6,000)</option>
+              <option value="Student Pass">Student Pass (₦1,000)</option>
+              <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+              <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
             </select>
           </div>
 
@@ -218,5 +214,24 @@ export default function CompleteRegistrationPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+        <p className="mt-4 text-zinc-600">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function CompleteRegistrationPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CompleteRegistrationContent />
+    </Suspense>
   )
 }

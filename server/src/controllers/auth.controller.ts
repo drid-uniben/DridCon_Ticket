@@ -81,9 +81,8 @@ class AuthController {
     const { name, email, password, phoneNumber, ticketType, designation, department } =
       req.body;
 
-    // For now, we assume paymentProof is a string.
-    // TODO: Implement file upload middleware to handle payment proof uploads.
-    const paymentProof = req.body.paymentProof || '';
+    // Handle file upload - multer stores the file info in req.file
+    const paymentProof = req.file ? req.file.filename : '';
 
     if (!name || !email || !password || !phoneNumber || !ticketType) {
       throw new BadRequestError(
