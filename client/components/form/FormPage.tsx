@@ -24,6 +24,7 @@ export default function FormPage() {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [ticket, setTicket] = useState("student")
+  const [department, setDepartment] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -101,6 +102,7 @@ export default function FormPage() {
       form.append("email", email)
       form.append("phone", phone)
       form.append("ticket", ticket)
+      form.append("department", department)
       if (file) form.append("receipt", file)
 
       // Example endpoint - replace with actual server route
@@ -113,6 +115,7 @@ export default function FormPage() {
       setEmail("")
       setPhone("")
       setTicket("student")
+      setDepartment("")
       setFile(null)
     } catch (err) {
       let errorMessage = "Submission failed. Try again."
@@ -148,6 +151,7 @@ export default function FormPage() {
               <TextField label="Name" name="name" value={name} onChange={setName} required placeholder="Full name" />
               <TextField label="Email" name="email" value={email} onChange={setEmail} required placeholder="you@example.com" />
               <TextField label="Phone Number" name="phone" value={phone} onChange={setPhone} required placeholder="080********" />
+              <TextField label="Department" name="department" value={department} onChange={setDepartment} placeholder="e.g. Computer Science" />
             </div>
           </FormCard>
 

@@ -78,7 +78,7 @@ class AuthController {
   });
 
   register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { name, email, password, phoneNumber, ticketType, designation } =
+    const { name, email, password, phoneNumber, ticketType, designation, department } =
       req.body;
 
     // For now, we assume paymentProof is a string.
@@ -105,6 +105,7 @@ class AuthController {
       phoneNumber,
       ticketType,
       designation,
+      department,
       paymentProof,
       role: UserRole.USER,
       isActive: true,
@@ -272,7 +273,7 @@ class AuthController {
   );
 
   completeRegistration = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { inviteToken, name, password, phoneNumber, ticketType, designation } = req.body;
+    const { inviteToken, name, password, phoneNumber, ticketType, designation, department } = req.body;
 
     if (!inviteToken || !name || !password || !phoneNumber || !ticketType) {
       throw new BadRequestError('Invite token, name, password, phone number, and ticket type are required.');
@@ -291,6 +292,7 @@ class AuthController {
     user.phoneNumber = phoneNumber;
     user.ticketType = ticketType;
     user.designation = designation;
+    user.department = department;
     user.qrCode = token;
     user.paymentStatus = PaymentStatus.CONFIRMED;
     user.inviteToken = undefined;

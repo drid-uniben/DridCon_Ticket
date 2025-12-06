@@ -65,7 +65,7 @@ class AdminController {
 
   manualRegisterAttendee = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
-      const { name, email, phoneNumber, ticketType, designation } = req.body;
+      const { name, email, phoneNumber, ticketType, designation, department } = req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError(
@@ -92,6 +92,7 @@ class AdminController {
         phoneNumber,
         ticketType,
         designation,
+        department,
         qrCode: token,
         paymentStatus: PaymentStatus.CONFIRMED,
         role: UserRole.USER,

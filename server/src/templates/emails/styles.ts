@@ -36,3 +36,36 @@ export const paragraphStyles = `
   color: ${textColor};
   margin-bottom: 20px;
 `;
+
+export const buttonContainerStyles = `
+  text-align: center;
+  margin: 25px 0;
+`;
+
+export const signatureStyles = `
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 30px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+`;
+
+export const qrCodeStyles = `
+  text-align: center;
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+`;
+
+// Export as styles object for template compatibility
+export const styles = {
+  container: containerStyles,
+  card: cardStyles,
+  heading: headerStyles,
+  button: buttonStyles,
+  paragraph: paragraphStyles,
+  buttonContainer: buttonContainerStyles,
+  signature: signatureStyles,
+  qrCode: qrCodeStyles,
+};
