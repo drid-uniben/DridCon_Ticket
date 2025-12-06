@@ -26,7 +26,7 @@ The DridCon Ticket Management System is designed to streamline the attendee veri
 8.  If the QR code is valid, the system marks the attendee as "checked-in," and the attendee is granted entry. The QR code is now considered "used" and cannot be used for another entry.
 9.  If the QR code is invalid or has already been used, the system will display an error message to the Front Desk agent, including details of who checked in the attendee if the ticket has already been used.
 
-#### 3.1.2. Scenario 2: Self-Registration by Attendee
+#### 3.1.2. Scenario 2: Self-Registration by Attendee ✅ (complete in frontend)
 
 1.  The attendee visits the DridCon conference website and navigates to the registration page.
 2.  The attendee fills out a registration form with their information (Full Name, Email, Phone Number, and preferred Ticket Type: Student Pass, Researcher Standard, or Researcher Premium).
@@ -39,7 +39,7 @@ The DridCon Ticket Management System is designed to streamline the attendee veri
 9.  The system sends an email to the attendee containing their ticket information and the unique QR code.
 10. On the day of the conference, the attendee presents their QR code to the Front Desk agent for scanning (following steps 5-9 in Scenario 1).
 
-#### 3.1.3. Scenario 3: Partial Registration by Admin & Completion by Attendee
+#### 3.1.3. Scenario 3: Partial Registration by Admin & Completion by Attendee ✅ (complete in frontend)
 
 1.  The Admin has partial information for an attendee (e.g., only email address).
 2.  The Admin uses the "Invite user" function in the admin dashboard, inputting the available partial information and selecting the intended Ticket Type if known.
@@ -53,10 +53,10 @@ The DridCon Ticket Management System is designed to streamline the attendee veri
 
 ### 3.2. Front Desk (Agent) Flow
 
-1.  **Agent Login:** The Front Desk agent logs into the system using their provided credentials (received via email from the Admin).
+1.  **Agent Login:** The Front Desk agent logs into the system using their provided credentials (received via email from the Admin). ✅ (complete in frontend)
 2.  **Attendee QR Code Presentation:** The agent requests the attendee to present their unique QR code (either on a mobile device or printed).
-3.  **QR Code Scan:** The agent uses a scanning device (e.g., a mobile web application after logging into the system) to scan the attendee's QR code.
-4.  **System Validation & Feedback:**
+3.  **QR Code Scan:** The agent uses a scanning device (e.g., a mobile web application after logging into the system) to scan the attendee's QR code. ✅ (complete in frontend — UI implemented)
+4.  **System Validation & Feedback:** ✅ (complete in frontend — UI implemented)
     - **Valid QR Code (First Scan):**
       - The system validates the QR code.
       - If valid and not previously scanned, the system marks the attendee as "checked-in" and invalidates that specific QR code for future use.
@@ -69,16 +69,16 @@ The DridCon Ticket Management System is designed to streamline the attendee veri
       - The system displays a message indicating the QR code has already been used.
       - The message includes details such as "Already Checked-In by [Agent Name] at [Time/Date]".
       - The agent denies entry and escalates the issue if necessary.
-5.  **Scan History:** The agent can view a history of users they have scanned, including their check-in status.
+5.  **Scan History:** The agent can view a history of users they have scanned, including their check-in status. ✅ (complete in frontend — UI implemented)
 
 ### 3.3. Admin Flow
 
-1.  **Admin Login:** The Admin logs into the system with their credentials.
-2.  **Agent Management:**
-    - **Add New Agent:** The Admin can add new Front Desk agents by inputting their Full Name and Email.
-    - **Generate Credentials:** The system generates unique login credentials for the new agent.
-    - **Send Credentials:** The system sends an email to the new agent containing their login credentials.
-3.  **Attendee Management:**
+1.  **Admin Login:** The Admin logs into the system with their credentials. (complete in frontend)
+2.  **Agent Management:** (complete in frontend — UI and credential generation simulated on frontend)
+  - **Add New Agent:** The Admin can add new Front Desk agents by inputting their Full Name and Email. (implemented in frontend)
+  - **Generate Credentials:** The system generates unique login credentials for the new agent. (generated client-side and shown to admin)
+  - **Send Credentials:** The system sends an email to the new agent containing their login credentials. (UI displays simulated send; actual email delivery is backend responsibility)
+3.  **Attendee Management:** ✅ (complete in frontend — UI implemented)
     - **Add Attendee (Manual Registration - Scenario 3.1.1):**
       - The Admin can manually input all attendee details (Full Name, Email, Phone Number, Ticket Type, Designation).
       - The system generates a QR code and sends the ticket email to the attendee.

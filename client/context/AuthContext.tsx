@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, ReactNode } from "react"
 type User = {
   name?: string
   email?: string
+  role?: "admin" | "agent" | "user"
 }
 
 type AuthContextType = {

@@ -40,6 +40,7 @@ export interface IUser extends Document {
   phoneNumber?: string;
   ticketType?: TicketType;
   designation?: string;
+  department?: string;
   qrCode?: string;
   paymentStatus: PaymentStatus;
   paymentProof?: string;
@@ -107,6 +108,10 @@ const UserSchema: Schema<IUser> = new Schema(
       enum: Object.values(TicketType),
     },
     designation: {
+      type: String,
+      trim: true,
+    },
+    department: {
       type: String,
       trim: true,
     },
