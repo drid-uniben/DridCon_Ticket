@@ -1,11 +1,11 @@
 All this will be created as issues in the future. N.B if the tasks added here conflicts with already available information in the PRD.md then specify by adding in brackets beside the task: already in PRD.
 
-1. The main form page under "About the event", after expanding, check the last section "More info section" and make the link there clickable/active to redirect users there for more info.
+1. The main form page under "About the event", after expanding, check the last section "More info section" and make the link there clickable/active to redirect users there for more info. [done]
 2. We have a redundant login page for the admin at /admin/login when we already have a unified one at /login. Check the relevant files like the auth context to make sure that deleting the redundant login in the admin section won't cause any issues and after testing delete it. I think going there right now redirects to the /login page. figure and test how that works
 3. Use S3 aws instance instead of uploading images to the server.
-4. change the main form field to only accept Images PNG, JPeG and all only, no more document files upload. keep the files at the maximum of 3mb per upload and also add a visual feedback for the image upload with options to change the image before subnmission.
+4. change the main form field to only accept Images PNG, JPeG and all only, no more document files upload. keep the files at the maximum of 3mb per upload and also add a visual feedback for the image upload with options to change the image before subnmission. [done]
 5. We should be able to see the view details in the Pending Approvals tab in the admin dashboard before the approve or reject buttons CTA to be able to see and confirm the uploaded receipt of payment before making a decision.
 6. Confirm the compelete-registration page and see if it aligns with the information/link in the email, I'm guessing it should have this folder structure /complete-registration/[token]/page.tsx instead of the current /complete-registration/page.tsx
 7. The invite user tab in the admin section should have the same complete fields as manual register with only the fields which the admin fills being pre-populated when the user receives the invite email. Also when the admin fills in all the fields then the system should prevent submission and tell the admin to use the manual register tab instead if he has all the fields info since the invite user are for users whom the admin has partial information about.
-8. Create a custom not found page in the frontend.
+8. Create a custom not found page in the frontend. [done]
 9. I don't think the agent dashboard should enter a QR code but instead only scan the QR code.
