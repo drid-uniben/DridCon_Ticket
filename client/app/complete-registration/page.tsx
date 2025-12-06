@@ -15,7 +15,7 @@ function CompleteRegistrationContent() {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [ticketType, setTicketType] = useState("student")
+  const [ticketType, setTicketType] = useState("Student Pass")
   const [department, setDepartment] = useState("")
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(true)
@@ -173,9 +173,9 @@ function CompleteRegistrationContent() {
               onChange={(e) => setTicketType(e.target.value)}
               className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
             >
-              <option value="student">Student Pass (₦1,000)</option>
-              <option value="standard">Researcher Standard (₦3,000)</option>
-              <option value="premium">Researcher Premium (₦6,000)</option>
+              <option value="Student Pass">Student Pass (₦1,000)</option>
+              <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+              <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
             </select>
           </div>
 

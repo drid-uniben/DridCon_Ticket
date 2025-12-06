@@ -41,14 +41,14 @@ export default function AdminDashboardPage() {
     name: "",
     email: "",
     phoneNumber: "",
-    ticketType: "student",
+    ticketType: "Student Pass",
     department: "",
   })
 
   // Invite form
   const [inviteForm, setInviteForm] = useState({
     email: "",
-    ticketType: "student",
+    ticketType: "Student Pass",
   })
 
   // Agent form
@@ -124,7 +124,7 @@ export default function AdminDashboardPage() {
     try {
       await adminApi.manualRegister(manualForm)
       setMessage({ type: "success", text: "Attendee registered! QR code sent via email." })
-      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "student", department: "" })
+      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "" })
       setActiveTab("attendees")
       fetchAttendees()
     } catch (err) {
@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
     try {
       await adminApi.inviteAttendee(inviteForm)
       setMessage({ type: "success", text: "Invitation sent!" })
-      setInviteForm({ email: "", ticketType: "student" })
+      setInviteForm({ email: "", ticketType: "Student Pass" })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to send invitation"
       setMessage({ type: "error", text: errorMessage })
@@ -410,9 +410,9 @@ export default function AdminDashboardPage() {
                   onChange={(e) => setManualForm({ ...manualForm, ticketType: e.target.value })}
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                 >
-                  <option value="student">Student Pass (₦1,000)</option>
-                  <option value="standard">Researcher Standard (₦3,000)</option>
-                  <option value="premium">Researcher Premium (₦6,000)</option>
+                  <option value="Student Pass">Student Pass (₦1,000)</option>
+                  <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+                  <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
                 </select>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Registering..." : "Register Attendee"}
@@ -440,9 +440,9 @@ export default function AdminDashboardPage() {
                   onChange={(e) => setInviteForm({ ...inviteForm, ticketType: e.target.value })}
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                 >
-                  <option value="student">Student Pass (₦1,000)</option>
-                  <option value="standard">Researcher Standard (₦3,000)</option>
-                  <option value="premium">Researcher Premium (₦6,000)</option>
+                  <option value="Student Pass">Student Pass (₦1,000)</option>
+                  <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+                  <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
                 </select>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Sending..." : "Send Invitation"}

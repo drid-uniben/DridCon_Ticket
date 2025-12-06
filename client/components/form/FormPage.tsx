@@ -15,7 +15,7 @@ export default function FormPage() {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
-  const [ticket, setTicket] = useState("student")
+  const [ticket, setTicket] = useState("Student Pass")
   const [designation, setDesignation] = useState("")
   const [department, setDepartment] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -107,7 +107,7 @@ export default function FormPage() {
       setEmail("")
       setPhone("")
       setPassword("")
-      setTicket("student")
+      setTicket("Student Pass")
       setDesignation("")
       setDepartment("")
       setFile(null)
@@ -158,9 +158,9 @@ export default function FormPage() {
               value={ticket}
               onChange={setTicket}
               options={[
-                { label: "Student Pass (₦1,000)", value: "student" },
-                { label: "Researcher Standard (₦3,000)", value: "standard" },
-                { label: "Researcher Premium (₦6,000)", value: "premium" },
+                { label: "Student Pass (₦1,000)", value: "Student Pass" },
+                { label: "Researcher Standard (₦3,000)", value: "Researcher Standard" },
+                { label: "Researcher Premium (₦6,000)", value: "Researcher Premium" },
               ]}
             />
           </FormCard>
