@@ -30,7 +30,6 @@ export const createAdminUser = async (): Promise<void> => {
       password: process.env.ADMIN_PASSWORD,
       role: UserRole.ADMIN,
       isActive: true, // New users are active by default
-      wallet: { balance: 0 }, // Initialize wallet
     };
 
     const admin = await User.create(adminData);
