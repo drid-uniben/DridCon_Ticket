@@ -13,11 +13,14 @@ export default function FileField({ label, name, onChange }: Props) {
   const [preview, setPreview] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const pickFile = () => inputRef.current?.click()
+  const pickFile = () => {
+    inputRef.current?.click()
+  }
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
       const file = files?.[0] ?? null
+
       if (!file) {
         onChange(null)
         setPreview(null)
@@ -41,7 +44,7 @@ export default function FileField({ label, name, onChange }: Props) {
         return
       }
 
-      // Set preview
+      // Set preview & update parent
       setPreview(URL.createObjectURL(file))
       onChange(file)
     },
@@ -63,59 +66,73 @@ export default function FileField({ label, name, onChange }: Props) {
     <div className="flex w-full flex-col gap-2">
       {label && <span className="text-sm font-medium text-zinc-900">{label}</span>}
 
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={pickFile}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") pickFile()
-        }}
-        onDrop={handleDrop}
-        onDragOver={(event) => {
-          preventNavigation(event)
-          setIsDragging(true)
-        }}
-        onDragLeave={(event) => {
-          preventNavigation(event)
-          setIsDragging(false)
-        }}
-        className={cn(
-          "flex min-h-[160px] cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed bg-white/70 p-5 text-sm transition",
-          isDragging ? "border-purple-500/80 bg-purple-50" : "border-purple-200/80 text-zinc-600"
-        )}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          name={name}
-          accept="image/png, image/jpeg"
-          className="hidden"
-          onChange={(event) => handleFiles(event.target.files)}
-        />
+      {/* Hidden input stays available at all times */}
+      <input
+        ref={inputRef}
+        type="file"
+        name={name}
+        accept="image/png, image/jpeg"
+        className="hidden"
+        onChange={(event) => handleFiles(event.target.files)}
+      />
 
-        <p className="text-base font-semibold text-zinc-900">Drag & drop or click to browse</p>
-        <p className="text-xs text-zinc-500">PNG, JPG, JPEG — Max 3MB</p>
-      </div>
+      {/* Upload section — hidden when preview exists */}
+      {!preview && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={pickFile}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") pickFile()
+          }}
+          onDrop={handleDrop}
+          onDragOver={(event) => {
+            preventNavigation(event)
+            setIsDragging(true)
+          }}
+          onDragLeave={(event) => {
+            preventNavigation(event)
+            setIsDragging(false)
+          }}
+          className={cn(
+            "flex min-h-[160px] cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed bg-white/70 p-5 text-sm transition",
+            isDragging ? "border-purple-500/80 bg-purple-50" : "border-purple-200/80 text-zinc-600"
+          )}
+        >
+          {/* MOBILE VIEW */}
+          <p className="text-base font-semibold text-zinc-900 md:hidden">
+            Click to browse
+          </p>
+
+          {/* DESKTOP VIEW */}
+          <div className="hidden md:flex flex-col items-center gap-1">
+            <p className="text-base font-semibold text-zinc-900">
+              Drag & drop or click to browse
+            </p>
+            <p className="text-xs text-zinc-500">PNG, JPG, JPEG — Max 3MB</p>
+          </div>
+        </div>
+      )}
 
       {/* Image Preview */}
       {preview && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 w-full max-w-xs">
           <img
             src={preview}
             alt="Preview"
-            className="w-full max-w-xs rounded-xl border shadow-md"
+            className="w-full rounded-xl border shadow-md"
           />
 
+          {/* CHANGE PHOTO BUTTON */}
           <button
             type="button"
-            className="px-3 py-1 text-xs rounded-lg bg-red-500 text-white hover:bg-red-600"
+            className="mt-3 w-full px-3 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700"
             onClick={() => {
-              setPreview(null)
-              onChange(null)
-              if (inputRef.current) inputRef.current.value = ""
+              // Reopen file browser to pick a new image
+              pickFile()
             }}
           >
-            Remove Image
+            Change Photo
           </button>
         </div>
       )}
