@@ -54,7 +54,7 @@ export default function NotFound() {
         {/* Go Back Button */}
         <button
           onClick={() => router.back()}
-          className="w-full bg-gray-200 text-gray-800 px-6 py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-all"
+          className="w-full bg-gray-300 text-gray-800 px-6 py-3 rounded-xl shadow-sm hover:bg-gray-500 hover:text-white transition-all"
         >
           Go Back to Previous Page
         </button>
@@ -62,7 +62,7 @@ export default function NotFound() {
         {/* Registration Page Button */}
         <Link
           href="/"
-          className="w-full bg-purple-600 text-white px-6 py-3 rounded-xl shadow-md hover:bg-purple-700 transition-all"
+          className="w-full bg-purple-500 text-white px-6 py-3 rounded-xl shadow-md hover:bg-purple-800 transition-all"
         >
           Go to Registration Page
         </Link>
