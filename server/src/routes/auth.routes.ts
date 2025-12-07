@@ -8,10 +8,20 @@ const router = Router();
 
 const standardLimit = rateLimiter(20, 60 * 60 * 1000);
 
+const getUploadsPath = (): string => {
+  if (process.env.NODE_ENV === 'production') {
+    // Go up to dist/ and then to uploads/documents
+    return path.join(__dirname, '..', '..', 'uploads', 'documents');
+  } else {
+    // In development, use the existing path
+    return path.join(process.cwd(), 'src', 'uploads', 'documents');
+  }
+};
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads/documents'));
+    cb(null, getUploadsPath());
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -21,13 +31,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+      cb(new Error('Invalid file type. Only JPEG, and PNG are allowed.'));
     }
   }
 });
