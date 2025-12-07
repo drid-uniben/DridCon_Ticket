@@ -110,6 +110,7 @@ const api: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
+  withCredentials: true, // Allow cookies to be sent
 })
 
 // Attach token from IndexedDB
@@ -126,15 +127,30 @@ api.interceptors.request.use(
   (err) => Promise.reject(err)
 )
 
-// Response handler
+// Response handler for token refresh
 api.interceptors.response.use(
   (res) => res,
   async (err: AxiosError) => {
-    if (err.response?.status === 401) {
-      await clearAllData()
-      if (typeof window !== 'undefined') window.location.href = '/login'
+    const originalRequest = err.config as (typeof err.config) & { _retry?: boolean };
+
+    if (err.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true; // Mark request to prevent infinite retry loops
+      try {
+        const { data } = await api.post('/auth/refresh-token');
+        if (data?.accessToken) {
+          await saveToken('accessToken', data.accessToken);
+          api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+          originalRequest.headers!.Authorization = `Bearer ${data.accessToken}`;
+          return api(originalRequest); // Retry the original request with the new token
+        }
+      } catch (refreshError) {
+        // If refresh fails, clear data and redirect to login
+        await clearAllData();
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
     }
-    return Promise.reject(err)
+    return Promise.reject(err);
   }
 )
 
@@ -152,7 +168,7 @@ export const authApi = {
   login: async (credentials: { email: string; password: string }) => {
     const res = await api.post('/auth/login', credentials)
     if (res.data?.accessToken) {
-      await saveToken('accessToken', res.data.accessToken)
+      await saveToken('accessToken', res.data.accessToken) // Only save accessToken
       await saveUserData(res.data.user)
     }
     return res.data
