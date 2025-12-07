@@ -13,6 +13,27 @@ type Props = {
   previewSections?: number
 }
 
+function makeClickable(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+  return text.split(urlRegex).map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          className="text-purple-700 underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 export default function FormDescription({
   title,
   sections,
@@ -29,8 +50,16 @@ export default function FormDescription({
       <div className="space-y-4 text-sm text-zinc-700">
         {visibleSections.map((section, index) => (
           <div key={index} className="space-y-2">
-            {section.heading && <p className="text-base font-semibold text-zinc-900">{section.heading}</p>}
-            {section.text && <p className="leading-relaxed text-sm">{section.text}</p>}
+            {section.heading && (
+              <p className="text-base font-semibold text-zinc-900">{section.heading}</p>
+            )}
+
+            {section.text && (
+              <p className="leading-relaxed text-sm">
+                {makeClickable(section.text)}
+              </p>
+            )}
+
             {section.items && (
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 {section.items.map((item) => (
