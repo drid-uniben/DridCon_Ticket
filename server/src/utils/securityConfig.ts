@@ -12,10 +12,10 @@ export const corsOptions: CorsOptions = {
 export const helmetOptions: HelmetOptions = {
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ['\'self\''],
-      scriptSrc: ['\'self\'', '\'unsafe-inline\''],
-      styleSrc: ['\'self\'', '\'unsafe-inline\''],
-      imgSrc: ['\'self\'', 'data:', 'https:'],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
       upgradeInsecureRequests: [],
     },
   },
@@ -36,14 +36,14 @@ export const helmetOptions: HelmetOptions = {
 };
 
 export const rateLimitOptions = {
-  windowMs: 15 * 60 * 1000,
-  max: 2000,
+  windowMs: 10 * 60 * 1000,
+  max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again later.',
   statusCode: 429,
   skipFailedRequests: false,
   skipSuccessfulRequests: false,
-  limit: 2000,
+  limit: 5000,
   requestPropertyName: 'rateLimit',
 };
