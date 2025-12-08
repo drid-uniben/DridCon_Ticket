@@ -15,7 +15,6 @@ function CompleteRegistrationContent() {
   const [phone, setPhone] = useState("")
   const [designation, setDesignation] = useState("")
   // Password fields removed: attendees do not set passwords as part of complete registration per spec
-  const [ticketType, setTicketType] = useState("Student Pass")
   const [department, setDepartment] = useState("")
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(true)
@@ -37,7 +36,6 @@ function CompleteRegistrationContent() {
         if (data.email) setEmail(data.email)
         if (data.name) setName(data.name)
         if (data.phoneNumber) setPhone(data.phoneNumber)
-        if (data.ticketType) setTicketType(data.ticketType)
         if (data.designation) setDesignation(data.designation)
         if (data.department) setDepartment(data.department)
       } catch {
@@ -53,13 +51,17 @@ function CompleteRegistrationContent() {
     e.preventDefault()
     setError(null)
 
+    if (!name || !phone || !designation) {
+      setError("Please fill in all required fields.")
+      return
+    }
+
     setLoading(true)
     try {
       await authApi.completeRegistration({
         inviteToken: token,
         name,
         phoneNumber: phone,
-        ticketType,
         designation,
         department,
       })
@@ -94,8 +96,8 @@ function CompleteRegistrationContent() {
           </div>
           <h1 className="text-2xl font-bold text-zinc-900">Registration Complete!</h1>
           <p className="text-zinc-600">Your ticket with QR code has been sent to your email.</p>
-          <Button onClick={() => router.push("/login")} className="bg-gradient-to-r from-purple-600 to-indigo-600">
-            Go to Login
+          <Button onClick={() => router.push("/")} className="bg-gradient-to-r from-purple-600 to-indigo-600">
+            Go to Registration page
           </Button>
         </div>
       </div>
@@ -155,13 +157,14 @@ function CompleteRegistrationContent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">Designation</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Designation *</label>
             <input
               type="text"
               value={designation}
               onChange={(e) => setDesignation(e.target.value)}
               className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
               placeholder="e.g. PhD Student, Lecturer"
+              required
             />
           </div>
 
@@ -174,19 +177,6 @@ function CompleteRegistrationContent() {
               className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
               placeholder="e.g. Computer Science"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">Ticket Type *</label>
-            <select
-              value={ticketType}
-              onChange={(e) => setTicketType(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
-            >
-              <option value="Student Pass">Student Pass (₦1,000)</option>
-              <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
-              <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
-            </select>
           </div>
 
           {/* Password and confirm password removed from UI per spec */}
