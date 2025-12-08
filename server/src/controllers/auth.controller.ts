@@ -273,6 +273,33 @@ class AuthController {
     }
   );
 
+  verifyInvite = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { token } = req.query;
+
+    if (!token) {
+      throw new BadRequestError('Invite token is required.');
+    }
+
+    const user = await User.findOne({ inviteToken: token as string, inviteTokenExpires: { $gt: new Date() } });
+
+    if (!user) {
+      throw new BadRequestError('Invalid or expired invite token.');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        email: user.email,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        ticketType: user.ticketType,
+        designation: user.designation,
+        department: user.department,
+      },
+    });
+  });
+
+
   completeRegistration = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { inviteToken, name, phoneNumber, ticketType, designation, department } = req.body;
 

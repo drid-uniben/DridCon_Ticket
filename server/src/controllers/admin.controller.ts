@@ -126,7 +126,8 @@ class AdminController {
 
   inviteAttendee = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
-      const { email } = req.body;
+      const { email, name, phoneNumber, ticketType, designation, department } =
+        req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError('Only administrators can invite attendees.');
@@ -146,6 +147,11 @@ class AdminController {
 
       await User.create({
         email,
+        name,
+        phoneNumber,
+        ticketType,
+        designation,
+        department,
         inviteToken,
         inviteTokenExpires,
         role: UserRole.USER,

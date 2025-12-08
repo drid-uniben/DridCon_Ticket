@@ -51,8 +51,12 @@ export default function AdminDashboardPage() {
 
   // Invite form
   const [inviteForm, setInviteForm] = useState({
+    name: "",
     email: "",
+    phoneNumber: "",
     ticketType: "Student Pass",
+    designation: "",
+    department: "",
   })
 
   // Agent form
@@ -143,10 +147,28 @@ export default function AdminDashboardPage() {
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+
+    const { name, email, phoneNumber, ticketType, designation } = inviteForm
+    if (name && email && phoneNumber && ticketType && designation) {
+      setMessage({
+        type: "error",
+        text: "All required fields are filled. Please use the Manual Register tab for complete registrations.",
+      })
+      setLoading(false)
+      return
+    }
+
     try {
       await adminApi.inviteAttendee(inviteForm)
       setMessage({ type: "success", text: "Invitation sent!" })
-      setInviteForm({ email: "", ticketType: "Student Pass" })
+      setInviteForm({
+        name: "",
+        email: "",
+        phoneNumber: "",
+        ticketType: "Student Pass",
+        designation: "",
+        department: "",
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to send invitation"
       setMessage({ type: "error", text: errorMessage })
@@ -484,12 +506,40 @@ export default function AdminDashboardPage() {
               <p className="text-sm text-zinc-500 mb-4">Send an invitation link. The user will complete their registration.</p>
               <form onSubmit={handleInvite} className="space-y-4 max-w-md">
                 <input
+                  type="text"
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                  placeholder="Full name"
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+                />
+                <input
                   type="email"
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                   placeholder="Email address"
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                   required
+                />
+                <input
+                  type="tel"
+                  value={inviteForm.phoneNumber}
+                  onChange={(e) => setInviteForm({ ...inviteForm, phoneNumber: e.target.value })}
+                  placeholder="Phone number"
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+                />
+                <input
+                  type="text"
+                  value={inviteForm.designation}
+                  onChange={(e) => setInviteForm({ ...inviteForm, designation: e.target.value })}
+                  placeholder="Designation (e.g. PhD Student, Lecturer)"
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+                />
+                <input
+                  type="text"
+                  value={inviteForm.department}
+                  onChange={(e) => setInviteForm({ ...inviteForm, department: e.target.value })}
+                  placeholder="Department (optional)"
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                 />
                 <select
                   value={inviteForm.ticketType}

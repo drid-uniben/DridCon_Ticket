@@ -13,6 +13,7 @@ function CompleteRegistrationContent() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
+  const [designation, setDesignation] = useState("")
   // Password fields removed: attendees do not set passwords as part of complete registration per spec
   const [ticketType, setTicketType] = useState("Student Pass")
   const [department, setDepartment] = useState("")
@@ -34,7 +35,11 @@ function CompleteRegistrationContent() {
         const data = res.data || res
         // Pre-fill email if provided
         if (data.email) setEmail(data.email)
+        if (data.name) setName(data.name)
+        if (data.phoneNumber) setPhone(data.phoneNumber)
         if (data.ticketType) setTicketType(data.ticketType)
+        if (data.designation) setDesignation(data.designation)
+        if (data.department) setDepartment(data.department)
       } catch {
         setError("Invalid or expired invitation link")
       } finally {
@@ -55,6 +60,7 @@ function CompleteRegistrationContent() {
         name,
         phoneNumber: phone,
         ticketType,
+        designation,
         department,
       })
       setSuccess(true)
@@ -145,6 +151,17 @@ function CompleteRegistrationContent() {
               className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
               placeholder="080********"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Designation</label>
+            <input
+              type="text"
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
+              placeholder="e.g. PhD Student, Lecturer"
             />
           </div>
 
