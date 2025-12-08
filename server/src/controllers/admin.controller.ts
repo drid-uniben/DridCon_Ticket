@@ -183,6 +183,7 @@ class AdminController {
   approveRegistration = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
       const { attendeeId } = req.params;
+      const { ticketType } = req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError(
@@ -197,6 +198,10 @@ class AdminController {
 
       if (attendee.paymentStatus !== PaymentStatus.PENDING) {
         throw new BadRequestError('This registration is not pending approval.');
+      }
+
+      if (ticketType) {
+        attendee.ticketType = ticketType;
       }
 
       const { token, filePath } = await generateQRCode({

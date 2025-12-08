@@ -14,6 +14,7 @@ type Attendee = {
   ticketType: string
   department?: string
   paymentStatus: "pending" | "approved" | "declined"
+  paymentProof?: string
   checkedIn: boolean
   createdAt: string
 }
@@ -35,6 +36,9 @@ export default function AdminDashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editedTicketType, setEditedTicketType] = useState<string>("")
 
   // Manual registration form
   const [manualForm, setManualForm] = useState({
@@ -97,11 +101,12 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, fetchAttendees, fetchAgents])
 
-  async function approveAttendee(id: string) {
+  async function approveAttendee(id: string, ticketType: string) {
     try {
-      await adminApi.approveRegistration(id)
+      await adminApi.approveRegistration(id, { ticketType })
       setMessage({ type: "success", text: "Attendee approved! QR code sent via email." })
       fetchAttendees()
+      setIsModalOpen(false)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to approve attendee"
       setMessage({ type: "error", text: errorMessage })
@@ -259,8 +264,15 @@ export default function AdminDashboardPage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button onClick={() => approveAttendee(attendee._id)} className="bg-green-600 hover:bg-green-700">
-                          Approve
+                        <Button
+                          onClick={() => {
+                            setSelectedAttendee(attendee)
+                            setEditedTicketType(attendee.ticketType)
+                            setIsModalOpen(true)
+                          }}
+                          variant="outline"
+                        >
+                          View Details
                         </Button>
                         <Button onClick={() => declineAttendee(attendee._id)} variant="outline" className="text-red-600 border-red-300 hover:bg-red-50">
                           Decline
@@ -270,6 +282,50 @@ export default function AdminDashboardPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {isModalOpen && selectedAttendee && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg">
+                <h2 className="text-lg font-semibold mb-4">Attendee Details</h2>
+                <div className="space-y-4">
+                  <p><strong>Name:</strong> {selectedAttendee.name}</p>
+                  <p><strong>Email:</strong> {selectedAttendee.email}</p>
+                  <p><strong>Phone:</strong> {selectedAttendee.phoneNumber}</p>
+                  <p><strong>Department:</strong> {selectedAttendee.department || "N/A"}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Ticket Type</label>
+                    <select
+                      value={editedTicketType}
+                      onChange={(e) => setEditedTicketType(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+                    >
+                      <option value="Student Pass">Student Pass (₦1,000)</option>
+                      <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+                      <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+                    </select>
+                  </div>
+                  {selectedAttendee.paymentProof && (
+                    <div>
+                      <p className="font-medium">Payment Receipt</p>
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/documents/${selectedAttendee.paymentProof}`}
+                        alt="Payment Receipt"
+                        className="w-full h-auto rounded-lg border"
+                      />
+                    </div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                      Close
+                    </Button>
+                    <Button onClick={() => approveAttendee(selectedAttendee._id, editedTicketType)} className="bg-green-600 hover:bg-green-700">
+                      Approve
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
