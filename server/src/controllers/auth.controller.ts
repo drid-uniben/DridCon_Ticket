@@ -109,6 +109,9 @@ class AuthController {
       isActive: true,
     });
 
+    // Send registration confirmation email
+    await emailService.sendRegistrationConfirmation(user.email, user.name);
+
     // Generate tokens
     const tokens = tokenService.generateTokens({
       userId: String(user._id),
@@ -298,8 +301,12 @@ class AuthController {
 
     await user.save();
 
+    if (!user.ticketType) {
+      throw new BadRequestError('User does not have a ticket type.');
+    }
+
     const qrCodeUrl = `${process.env.API_URL}${filePath}`;
-    await emailService.sendTicketWithQR(user.email, user.name, qrCodeUrl);
+    await emailService.sendTicketWithQR(user.email, user.name, qrCodeUrl, user.ticketType);
 
     res.status(200).json({
       success: true,

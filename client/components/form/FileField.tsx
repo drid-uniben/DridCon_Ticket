@@ -1,17 +1,30 @@
 "use client"
-import React, { useCallback, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 type Props = {
   label?: string
   name?: string
+  value: File | null
   onChange: (file: File | null) => void
 }
 
-export default function FileField({ label, name, onChange }: Props) {
+export default function FileField({ label, name, value, onChange }: Props) {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (value) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreview(reader.result as string)
+      }
+      reader.readAsDataURL(value)
+    } else {
+      setPreview(null)
+    }
+  }, [value])
 
   const pickFile = () => inputRef.current?.click()
 
@@ -21,7 +34,6 @@ export default function FileField({ label, name, onChange }: Props) {
 
       if (!file) {
         onChange(null)
-        setPreview(null)
         return
       }
 
@@ -30,7 +42,6 @@ export default function FileField({ label, name, onChange }: Props) {
       if (!validTypes.includes(file.type)) {
         alert("Only PNG, JPG, JPEG, WEBP images are allowed.")
         onChange(null)
-        setPreview(null)
         return
       }
 
@@ -38,15 +49,14 @@ export default function FileField({ label, name, onChange }: Props) {
       if (file.size > 3 * 1024 * 1024) {
         alert("Image must be under 3MB.")
         onChange(null)
-        setPreview(null)
         return
       }
 
-      setPreview(URL.createObjectURL(file))
       onChange(file)
     },
     [onChange]
   )
+
 
   const preventNavigation = (event: React.DragEvent) => {
     event.preventDefault()

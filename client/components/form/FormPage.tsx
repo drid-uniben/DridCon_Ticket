@@ -145,7 +145,7 @@ export default function FormPage() {
               <TextField label="Email" name="email" value={email} onChange={setEmail} required placeholder="you@example.com" />
               <TextField label="Phone Number" name="phone" value={phone} onChange={setPhone} required placeholder="080********" />
               {/* Password removed - attendees don't set a password during initial registration */}
-              <TextField label="Designation" name="designation" value={designation} onChange={setDesignation} placeholder="e.g. PhD Student, Lecturer" />
+              <TextField label="Designation" name="designation" value={designation} onChange={setDesignation} required placeholder="e.g. PhD Student, Lecturer" />
               <TextField label="Department" name="department" value={department} onChange={setDepartment} placeholder="e.g. Computer Science" />
             </div>
           </FormCard>
@@ -165,7 +165,7 @@ export default function FormPage() {
           </FormCard>
 
           <FormCard heading="Upload payment receipt" description="Drag & drop or click to browse.">
-            <FileField label="" name="receipt" onChange={setFile} />
+            <FileField label="" name="receipt" value={file} onChange={setFile} />
             {file && <p className="mt-3 text-sm text-purple-700">Selected file: {file.name}</p>}
             <div className="mt-4 space-y-1 rounded-2xl bg-purple-50/80 p-4 text-sm text-zinc-600">
               <p className="text-xs uppercase tracking-wide text-purple-600">Payment information</p>

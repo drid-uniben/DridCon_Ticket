@@ -6,7 +6,7 @@ import {
   responsiveStyles,
 } from './styles';
 
-export const ticketTemplate = (name: string, qrCodeDataUrl: string): string => {
+export const ticketTemplate = (name: string, qrCodeDataUrl: string, ticketType: string): string => {
   const eventDetailsStyle = `
     background: #f3f4f6;
     padding: 20px;
@@ -32,17 +32,18 @@ export const ticketTemplate = (name: string, qrCodeDataUrl: string): string => {
     ${responsiveStyles}
     <div class="email-container" style="${containerStyles}">
       <div class="email-card" style="${cardStyles}">
-        <h1 style="${headerStyles}">DridCon 2024 Ticket</h1>
+        <h1 style="${headerStyles}">DridCon 2025 Ticket</h1>
         <p style="${paragraphStyles}">Dear ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon 2026. Please find your ticket details below.</p>
         
         <div style="text-align: center; margin: 20px 0;">
           <p style="${paragraphStyles}"><strong>Present this QR code at the entrance</strong></p>
-          <img class="qr" src="${qrCodeDataUrl}" alt="QR Code" style="display:block; margin:0 auto; width: 220px; height: 220px;" />
+          <img class="qr" src="${qrCodeDataUrl}" alt="QR Code" style="display:block; margin:0 auto; width: 240px; height: 240px;" />
         </div>
 
         <div style="${eventDetailsStyle}">
           <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research, Development & Innovation Conference</p>
+          <p style="margin: 0 0 10px 0;"><strong>Ticket Type:</strong> ${ticketType}</p>
           <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, UNIBEN</p>
           <p style="margin: 0;"><strong>Important:</strong> Bring this QR code (digital or printed)</p>
         </div>

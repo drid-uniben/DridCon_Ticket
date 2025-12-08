@@ -4,7 +4,7 @@ export const backgroundColor = '#f9fafb'; // A light gray
 export const textColor = '#1f2937';
 export const containerStyles = `
   background-color: ${backgroundColor};
-  padding: 20px;
+  padding: 10px;
   font-family: Arial, sans-serif;
 `;
 export const cardStyles = `
@@ -67,8 +67,8 @@ export const responsiveStyles = `
 
     /* Mobile adjustments: make the card nearly full-width and reduce outer padding */
     @media only screen and (max-width: 480px) {
-      .email-container { padding: 6px !important; }
-      .email-card { padding: 14px !important; margin: 0 6px !important; max-width: 100% !important; border-radius: 6px !important; }
+      .email-container { padding: 4px !important; }
+      .email-card { padding: 4px !important; margin: 0 4px !important; max-width: 100% !important; border-radius: 4px !important; }
       .email-card h1 { font-size: 20px !important; }
       img.qr { display: block; margin: 0 auto; max-width: 90% !important; height: auto !important; }
     }

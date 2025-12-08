@@ -5,6 +5,7 @@ import {
   agentCredentialsTemplate,
   attendeeInviteTemplate,
   ticketTemplate,
+  registrationConfirmationTemplate,
 } from '../templates/emails';
 
 validateEnv();
@@ -68,14 +69,15 @@ class EmailService {
   async sendTicketWithQR(
     email: string,
     name: string,
-    qrCodeDataUrl: string
+    qrCodeDataUrl: string,
+    ticketType: string
   ): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: this.emailFrom,
         to: email,
         subject: 'Your DridCon Ticket and QR Code',
-        html: ticketTemplate(name, qrCodeDataUrl),
+        html: ticketTemplate(name, qrCodeDataUrl, ticketType),
       });
       logger.info(`Ticket with QR code sent to: ${email}`);
     } catch (error) {
@@ -101,6 +103,24 @@ class EmailService {
     } catch (error) {
       logger.error(
         'Failed to send attendee invite:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  async sendRegistrationConfirmation(email: string, name: string): Promise<void> {
+    try {
+      await this.transporter.sendMail({
+        from: this.emailFrom,
+        to: email,
+        subject: 'DridCon Registration Confirmation',
+        html: registrationConfirmationTemplate(name),
+      });
+      logger.info(`Registration confirmation email sent to: ${email}`);
+    } catch (error) {
+      logger.error(
+        'Failed to send registration confirmation email:',
         error instanceof Error ? error.message : 'Unknown error'
       );
       throw error;

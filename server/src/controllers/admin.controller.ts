@@ -114,7 +114,7 @@ class AdminController {
       });
 
       const qrCodeUrl = `${process.env.API_URL}${filePath}`;
-      await emailService.sendTicketWithQR(email, name, qrCodeUrl);
+      await emailService.sendTicketWithQR(email, name, qrCodeUrl, ticketType);
 
       res.status(201).json({
         success: true,
@@ -207,11 +207,16 @@ class AdminController {
       attendee.qrCode = token;
       await attendee.save();
 
+      if (!attendee.ticketType) {
+        throw new BadRequestError('Attendee does not have a ticket type.');
+      }
+
       const qrCodeUrl = `${process.env.API_URL}${filePath}`;
       await emailService.sendTicketWithQR(
         attendee.email,
         attendee.name,
-        qrCodeUrl
+        qrCodeUrl,
+        attendee.ticketType
       );
 
       res.status(200).json({
