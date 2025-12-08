@@ -3,6 +3,7 @@ import {
   cardStyles,
   headerStyles,
   paragraphStyles,
+  responsiveStyles,
 } from './styles';
 
 export const ticketTemplate = (name: string, qrCodeDataUrl: string): string => {
@@ -28,15 +29,16 @@ export const ticketTemplate = (name: string, qrCodeDataUrl: string): string => {
   `;
 
   return `
-    <div style="${containerStyles}">
-      <div style="${cardStyles}">
+    ${responsiveStyles}
+    <div class="email-container" style="${containerStyles}">
+      <div class="email-card" style="${cardStyles}">
         <h1 style="${headerStyles}">DridCon 2024 Ticket</h1>
         <p style="${paragraphStyles}">Dear ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon 2026. Please find your ticket details below.</p>
         
         <div style="text-align: center; margin: 20px 0;">
           <p style="${paragraphStyles}"><strong>Present this QR code at the entrance</strong></p>
-          <img src="${qrCodeDataUrl}" alt="QR Code" style="width: 250px; height: 250px;" />
+          <img class="qr" src="${qrCodeDataUrl}" alt="QR Code" style="display:block; margin:0 auto; width: 250px; height: 250px;" />
         </div>
 
         <div style="${eventDetailsStyle}">

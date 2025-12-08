@@ -26,7 +26,7 @@ export default function FormPage() {
     {
       heading: "Overview",
       text:
-        "The Directorate of Research, Innovation and Development, UNIBEN, invites researchers, students, and innovators to a dynamic conference and innovation fair that highlights the creativity and impact of the campus community.",
+        "The Directorate of Research, Innovation and Development, DRID UNIBEN, invites researchers, students, and innovators to a dynamic conference and innovation fair that highlights the creativity and impact of the campus community.",
     },
     {
       heading: "Why attend",

@@ -3,6 +3,7 @@ import {
   cardStyles,
   headerStyles,
   paragraphStyles,
+  responsiveStyles,
 } from './styles';
 
 export const paymentReminderTemplate = (
@@ -33,8 +34,9 @@ export const paymentReminderTemplate = (
   `;
 
   return `
-    <div style="${containerStyles}">
-      <div style="${cardStyles}">
+    ${responsiveStyles}
+    <div class="email-container" style="${containerStyles}">
+      <div class="email-card" style="${cardStyles}">
         <div style="${highlightBoxStyle}">
           <p style="font-size: 24px; margin: 0 0 10px 0;">⏰</p>
           <h2 style="margin: 0; font-size: 20px;">Complete Your Registration</h2>

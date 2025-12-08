@@ -58,6 +58,22 @@ export const qrCodeStyles = `
   border-radius: 8px;
 `;
 
+// Responsive CSS block to be injected into templates' head
+export const responsiveStyles = `
+  <style type="text/css">
+    /* Core classes used by templates */
+    .email-container { width: 100%; }
+    .email-card { max-width: 600px; margin: 0 auto; }
+
+    /* Mobile adjustments: make the card nearly full-width and reduce outer padding */
+    @media only screen and (max-width: 480px) {
+      .email-container { padding: 6px !important; }
+      .email-card { padding: 14px !important; margin: 0 6px !important; max-width: 100% !important; border-radius: 6px !important; }
+      .email-card h1 { font-size: 20px !important; }
+      img.qr { display: block; margin: 0 auto; max-width: 90% !important; height: auto !important; }
+    }
+  </style>
+`;
 // Export as styles object for template compatibility
 export const styles = {
   container: containerStyles,
@@ -68,4 +84,5 @@ export const styles = {
   buttonContainer: buttonContainerStyles,
   signature: signatureStyles,
   qrCode: qrCodeStyles,
+  responsive: responsiveStyles,
 };

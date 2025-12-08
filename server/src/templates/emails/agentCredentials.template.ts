@@ -4,6 +4,7 @@ import {
   headerStyles,
   paragraphStyles,
   buttonStyles,
+  responsiveStyles,
 } from './styles';
 
 export const agentCredentialsTemplate = (
@@ -11,8 +12,9 @@ export const agentCredentialsTemplate = (
   password: string,
   loginUrl: string
 ): string => `
-  <div style="${containerStyles}">
-    <div style="${cardStyles}">
+  ${responsiveStyles}
+  <div class="email-container" style="${containerStyles}">
+    <div class="email-card" style="${cardStyles}">
       <h1 style="${headerStyles}">Your DridCon Agent Account</h1>
       <p style="${paragraphStyles}">Hello,</p>
       <p style="${paragraphStyles}">

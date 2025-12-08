@@ -1,4 +1,4 @@
-import { containerStyles, cardStyles, headerStyles, paragraphStyles, buttonStyles } from './styles';
+import { containerStyles, cardStyles, headerStyles, paragraphStyles, buttonStyles, responsiveStyles } from './styles';
 
 export const attendeeInviteTemplate = (registrationUrl: string): string => {
   const signatureStyle = `
@@ -8,8 +8,9 @@ export const attendeeInviteTemplate = (registrationUrl: string): string => {
   `;
 
   return `
-    <div style="${containerStyles}">
-      <div style="${cardStyles}">
+    ${responsiveStyles}
+    <div class="email-container" style="${containerStyles}">
+      <div class="email-card" style="${cardStyles}">
         <h1 style="${headerStyles}">DridCon Registration Invitation</h1>
         <p style="${paragraphStyles}">Dear prospective attendee,</p>
         <p style="${paragraphStyles}">

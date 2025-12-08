@@ -5,7 +5,8 @@ import {
     containerStyles,
     cardStyles,
     headerStyles,
-    paragraphStyles
+    paragraphStyles,
+    responsiveStyles,
   } from './styles';
 
   export const withdrawalStatusTemplate = (name: string, amount: number, status: 'approved' | 'rejected'): string => {
@@ -14,8 +15,9 @@ import {
     const statusColor = isApproved ? primaryColor : '#ef4444'; // Use primary for approved, red for rejected
 
     return `
-      <div style="${containerStyles}">
-        <div style="${cardStyles}">
+      ${responsiveStyles}
+      <div class="email-container" style="${containerStyles}">
+        <div class="email-card" style="${cardStyles}">
           <h1 style="${headerStyles}">Withdrawal Request Update</h1>
           <p style="${paragraphStyles}">Hello ${name},</p>
           <p style="${paragraphStyles}">
