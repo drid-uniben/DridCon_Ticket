@@ -86,6 +86,7 @@ export default function FormPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (loading) return
     setLoading(true)
     setMessage(null)
 
