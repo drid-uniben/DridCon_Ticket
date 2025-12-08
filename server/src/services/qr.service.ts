@@ -2,6 +2,8 @@ import QRCode from 'qrcode';
 import logger from '../utils/logger';
 import tokenService from './token.service';
 import validateEnv from '../utils/validateEnv';
+import path from 'path';
+import fs from 'fs';
 
 validateEnv();
 
@@ -12,11 +14,23 @@ if (!QR_CODE_SECRET) {
 
 export const generateQRCode = async (
   payload: Record<string, any>
-): Promise<{ token: string; dataUrl: string }> => {
+): Promise<{ token: string; filePath: string }> => {
   try {
     const token = tokenService.generateToken(payload, QR_CODE_SECRET, '365d');
-    const dataUrl = await QRCode.toDataURL(token);
-    return { token, dataUrl };
+    const qrCodeDirectory = path.join(__dirname, '..', 'uploads', 'qrcodes');
+    
+    // Ensure the directory exists
+    if (!fs.existsSync(qrCodeDirectory)) {
+      fs.mkdirSync(qrCodeDirectory, { recursive: true });
+    }
+
+    const filePath = path.join(qrCodeDirectory, `${payload.email}-${Date.now()}.png`);
+    
+    await QRCode.toFile(filePath, token);
+
+    const fileUrl = `/uploads/qrcodes/${path.basename(filePath)}`;
+
+    return { token, filePath: fileUrl };
   } catch (error) {
     logger.error('Error generating QR code:', error);
     throw new Error('Could not generate QR code.');

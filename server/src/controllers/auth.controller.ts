@@ -283,7 +283,7 @@ class AuthController {
       throw new BadRequestError('Invalid or expired invite token.');
     }
 
-    const { token, dataUrl } = await generateQRCode({ email: user.email });
+    const { token, filePath } = await generateQRCode({ email: user.email });
 
     user.name = name;
     user.phoneNumber = phoneNumber;
@@ -298,7 +298,8 @@ class AuthController {
 
     await user.save();
 
-    await emailService.sendTicketWithQR(user.email, user.name, dataUrl);
+    const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+    await emailService.sendTicketWithQR(user.email, user.name, qrCodeUrl);
 
     res.status(200).json({
       success: true,
