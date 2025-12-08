@@ -7,7 +7,7 @@
     "clean": "rimraf dist",
     "lint": "eslint 'src/**/*.{ts,js}'",
     "lint:fix": "eslint 'src/**/*.{ts,js}' --fix",
-    "build": "tsc",
+    "build": "rimraf dist && tsc && copyfiles -u 1 src/uploads/**/* dist && copyfiles swagger.yaml dist",
     "start": "node dist/index.js",
     "dev": "nodemon --exec ts-node src/index.ts",
     "worker": "ts-node src/worker.ts"
@@ -65,6 +65,7 @@
     "@types/yamljs": "^0.2.34",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
+    "copyfiles": "^2.4.1",
     "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.0",

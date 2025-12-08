@@ -19,11 +19,7 @@ import logger from './utils/logger';
 import path from 'path';
 
 const getStaticUploadsPath = (): string => {
-  if (process.env.NODE_ENV === 'production') {
-    return path.join(__dirname, 'uploads');
-  } else {
-    return path.join(__dirname, 'uploads');
-  }
+  return path.join(__dirname, 'uploads');
 };
 
 const swaggerDocument: any = YAML.load('./swagger.yaml');
