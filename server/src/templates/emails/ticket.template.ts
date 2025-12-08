@@ -38,7 +38,7 @@ export const ticketTemplate = (name: string, qrCodeDataUrl: string): string => {
         
         <div style="text-align: center; margin: 20px 0;">
           <p style="${paragraphStyles}"><strong>Present this QR code at the entrance</strong></p>
-          <img class="qr" src="${qrCodeDataUrl}" alt="QR Code" style="display:block; margin:0 auto; width: 250px; height: 250px;" />
+          <img class="qr" src="${qrCodeDataUrl}" alt="QR Code" style="display:block; margin:0 auto; width: 220px; height: 220px;" />
         </div>
 
         <div style="${eventDetailsStyle}">

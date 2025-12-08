@@ -1,20 +1,24 @@
 import {
-    primaryColor,
-    backgroundColor,
-    textColor,
-    containerStyles,
-    cardStyles,
-    headerStyles,
-    paragraphStyles,
-    responsiveStyles,
-  } from './styles';
+  primaryColor,
+  backgroundColor,
+  textColor,
+  containerStyles,
+  cardStyles,
+  headerStyles,
+  paragraphStyles,
+  responsiveStyles,
+} from './styles';
 
-  export const withdrawalStatusTemplate = (name: string, amount: number, status: 'approved' | 'rejected'): string => {
-    const isApproved = status === 'approved';
-    const statusText = isApproved ? 'Approved' : 'Rejected';
-    const statusColor = isApproved ? primaryColor : '#ef4444'; // Use primary for approved, red for rejected
+export const withdrawalStatusTemplate = (
+  name: string,
+  amount: number,
+  status: 'approved' | 'rejected'
+): string => {
+  const isApproved = status === 'approved';
+  const statusText = isApproved ? 'Approved' : 'Rejected';
+  const statusColor = isApproved ? primaryColor : '#ef4444'; // Use primary for approved, red for rejected
 
-    return `
+  return `
       ${responsiveStyles}
       <div class="email-container" style="${containerStyles}">
         <div class="email-card" style="${cardStyles}">
@@ -27,9 +31,10 @@ import {
             <p><strong>Amount:</strong> NGN ${amount.toLocaleString()}</p>
             <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></p>
           </div>
-          ${isApproved
-            ? `<p style="${paragraphStyles}">The funds will be transferred to your bank account shortly. Thank you for using EcoUNIBEN!</p>`
-            : `<p style="${paragraphStyles}">Your withdrawal request has been rejected. The points have been returned to your wallet. If you have any questions, please contact our support team.</p>`
+          ${
+            isApproved
+              ? `<p style="${paragraphStyles}">The funds will be transferred to your bank account shortly. Thank you for using EcoUNIBEN!</p>`
+              : `<p style="${paragraphStyles}">Your withdrawal request has been rejected. The points have been returned to your wallet. If you have any questions, please contact our support team.</p>`
           }
           <p style="font-size: 12px; color: #6b7280; margin-top: 30px;">
             This is an automated message. Please do not reply to this email.
@@ -37,4 +42,4 @@ import {
         </div>
       </div>
     `;
-  }
+};

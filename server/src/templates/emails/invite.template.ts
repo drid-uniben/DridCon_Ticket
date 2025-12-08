@@ -1,4 +1,11 @@
-import { containerStyles, cardStyles, headerStyles, paragraphStyles, buttonStyles, responsiveStyles } from './styles';
+import {
+  containerStyles,
+  cardStyles,
+  headerStyles,
+  paragraphStyles,
+  buttonStyles,
+  responsiveStyles,
+} from './styles';
 
 export const attendeeInviteTemplate = (registrationUrl: string): string => {
   const signatureStyle = `
