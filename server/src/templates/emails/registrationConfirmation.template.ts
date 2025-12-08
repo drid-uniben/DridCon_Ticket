@@ -29,11 +29,12 @@ export const registrationConfirmationTemplate = (name: string): string => {
         <h1 style="${headerStyles}">DridCon 2025 Registration</h1>
         <p style="${paragraphStyles}">Hi ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon! Your registration was successful.</p>
-        <p style="${paragraphStyles}">You will receive your ticket details, including your QR code for entry, as soon as your payment is confirmed by our team.</p>
+        <p style="${paragraphStyles}">You will receive your ticket details, including your QR code for entry by mail, as soon as your payment is confirmed by our team.</p>
         
         <div style="${eventDetailsStyle}">
           <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research, Development & Innovation Conference</p>
-          <p style="margin: 0;">Get ready for an immersive experience with insightful talks, hands-on workshops, and networking opportunities with leading experts in the field. We'll be covering the latest trends in software development, AI, and more.</p>
+          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, UNIBEN</p>
+          <p style="margin: 0;">Get ready for an immersive experience with insightful talks, hands-on workshops, and networking opportunities with leading experts in the field.</p>
         </div>
 
         <p style="${paragraphStyles}">We look forward to seeing you at DridCon!</p>

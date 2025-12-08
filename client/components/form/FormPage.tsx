@@ -102,7 +102,7 @@ export default function FormPage() {
         paymentProof: file || undefined,
       })
 
-      setMessage({ type: 'success', text: 'Registration submitted successfully! Check your email for confirmation once payment is verified.' })
+      setMessage({ type: 'success', text: 'Registration submitted successfully! Check your email for a registration confirmation mail containing more information.' })
       setName("")
       setEmail("")
       setPhone("")

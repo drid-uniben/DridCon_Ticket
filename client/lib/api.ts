@@ -133,7 +133,7 @@ api.interceptors.response.use(
   async (err: AxiosError) => {
     const originalRequest = err.config as (typeof err.config) & { _retry?: boolean };
 
-    if (err.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (err.response?.status === 401 && originalRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh-token') {
       originalRequest._retry = true; // Mark request to prevent infinite retry loops
       try {
         const { data } = await api.post('/auth/refresh-token');

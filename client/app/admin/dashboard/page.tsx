@@ -310,7 +310,7 @@ export default function AdminDashboardPage() {
                     <div>
                       <p className="font-medium">Payment Receipt</p>
                       <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/documents/${selectedAttendee.paymentProof}`}
+                        src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/uploads/documents/${selectedAttendee.paymentProof}`}
                         alt="Payment Receipt"
                         className="w-full h-auto rounded-lg border"
                       />
