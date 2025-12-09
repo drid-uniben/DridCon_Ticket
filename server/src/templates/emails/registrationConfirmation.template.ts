@@ -26,7 +26,7 @@ export const registrationConfirmationTemplate = (name: string): string => {
     ${responsiveStyles}
     <div class="email-container" style="${containerStyles}">
       <div class="email-card" style="${cardStyles}">
-        <h1 style="${headerStyles}">DridCon 2025 Registration</h1>
+        <h1 style="${headerStyles}">DridCon 2026 Registration</h1>
         <p style="${paragraphStyles}">Hi ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon! Your registration was successful.</p>
         <p style="${paragraphStyles}">You will receive your ticket details, including your QR code for entry by mail, as soon as your payment is confirmed by our team.</p>

@@ -36,7 +36,7 @@ export const ticketTemplate = (
     ${responsiveStyles}
     <div class="email-container" style="${containerStyles}">
       <div class="email-card" style="${cardStyles}">
-        <h1 style="${headerStyles}">DridCon 2025 Ticket</h1>
+        <h1 style="${headerStyles}">DridCon 2026 Ticket</h1>
         <p style="${paragraphStyles}">Dear ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon 2026. Please find your ticket details below.</p>
         
