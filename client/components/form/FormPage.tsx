@@ -150,7 +150,7 @@ export default function FormPage() {
         <header className="flex items-center gap-4">
           <Logo size={80} />
           <div>
-            <h1 className="text-3xl font-bold text-zinc-900">Research, Innovation, and Enterprise</h1>
+            <h1 className="text-3xl font-bold text-zinc-900">Research Conference and Innovation Fair.</h1>
             <p className="text-sm text-zinc-600">Positioning UNIBEN for National Development and Global Relevance</p>
           </div>
         </header>
