@@ -85,6 +85,15 @@ class DuplicateKeyError extends AppError {
     this.code = 11000;
   }
 }
+
+class ConflictError extends AppError {
+  details?: any;
+
+  constructor(message: string, details?: any) {
+    super(message, 409);
+    this.details = details;
+  }
+}
   
 class FileUploadError extends AppError {
   code: string;
@@ -106,5 +115,6 @@ export {
   ValidationError,
   CastError,
   DuplicateKeyError,
+  ConflictError,
   FileUploadError,
 };

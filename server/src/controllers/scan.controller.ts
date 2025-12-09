@@ -3,6 +3,7 @@ import asyncHandler from '../utils/asyncHandler';
 import User, { CheckInStatus, UserRole } from '../model/user.model';
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
 } from '../utils/customErrors';
@@ -42,11 +43,10 @@ class ScanController {
         logger.warn(
           `Attempt to re-scan already checked-in attendee: ${attendee.email}`
         );
-        throw new BadRequestError(
-          `This ticket has already been used. Checked in by ${
-            (attendee.checkedInBy as any)?.name
-          } at ${attendee.checkedInAt?.toLocaleString()}.`
-        );
+        throw new ConflictError('This ticket has already been used.', {
+          checkedInBy: (attendee.checkedInBy as any)?.name,
+          checkedInAt: attendee.checkedInAt?.toLocaleString(),
+        });
       }
 
       attendee.checkInStatus = CheckInStatus.CHECKED_IN;
@@ -82,13 +82,24 @@ class ScanController {
         checkedInBy: agent._id as any,
         checkInStatus: CheckInStatus.CHECKED_IN,
       })
-        .select('name email ticketType checkedInAt')
+        .select('_id name email ticketType checkedInAt checkInStatus checkedInBy')
+        .populate('checkedInBy', 'name')
         .sort({ checkedInAt: -1 });
+
+      const totalScans = history.length;
+      const successfulCheckIns = history.filter(
+        (item) => item.checkInStatus === CheckInStatus.CHECKED_IN
+      ).length;
 
       res.status(200).json({
         success: true,
-        count: history.length,
-        data: history,
+        data: {
+          history,
+          stats: {
+            totalScans,
+            successfulCheckIns,
+          },
+        },
       });
     }
   );

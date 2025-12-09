@@ -28,6 +28,7 @@ export default function AgentDashboardPage() {
   const [scanning, setScanning] = useState(false)
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([])
+  const [stats, setStats] = useState({ totalScans: 0, successfulCheckIns: 0 })
   const [showHistory, setShowHistory] = useState(false)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -55,37 +56,43 @@ export default function AgentDashboardPage() {
     const fetchScanHistory = async () => {
       try {
         const response = await scanApi.getScanHistory()
-        // Assuming response.data is an array of scan history objects
-        // The structure of the objects in the array should match ScanResult type
-        // if not, then a mapping is needed.
-        const formattedHistory: ScanResult[] = response.data.map((item: any) => ({
-          id: item._id || item.id, // Use _id from MongoDB if applicable
+        const { history, stats } = response.data.data
+        
+        const formattedHistory: ScanResult[] = history.map((item: any) => ({
+          id: item._id,
           attendeeName: item.name || "Unknown",
           email: item.email || "",
           ticketType: item.ticketType || "",
-          status: item.status, // Assuming status is directly compatible
+          status: item.checkInStatus === "checked-in" ? "success" : "invalid",
           scannedAt: item.checkedInAt,
-          scannedBy: item.scannedBy, // This might be null for success scans
+          scannedBy: item.checkedInBy?.name,
         }))
         setScanHistory(formattedHistory)
+        setStats(stats)
       } catch (error) {
         console.error("Failed to fetch scan history:", error)
-        // Optionally display an error message to the user
       }
     }
     
     if (user && user.role === "agent") {
       fetchScanHistory()
     }
-  }, [user]) // Depend on user to ensure it runs after user is loaded
+  }, [user])
   
   const addToHistory = useCallback(
-   (result: ScanResult) => {
-     const updated = [result, ...scanHistory].slice(0, 50);
-     setScanHistory(updated);
-   },
-   [scanHistory, setScanHistory]
- );
+    (result: ScanResult) => {
+      const updated = [result, ...scanHistory].slice(0, 50);
+      setScanHistory(updated);
+      // Update stats locally
+      setStats(prevStats => ({
+        totalScans: prevStats.totalScans + 1,
+        successfulCheckIns: result.status === 'success' 
+          ? prevStats.successfulCheckIns + 1 
+          : prevStats.successfulCheckIns
+      }));
+    },
+    [scanHistory]
+  );
 
   // Scan handler for camera scan
   const handleCameraScan = useCallback(async (token: string) => {
@@ -103,8 +110,6 @@ export default function AgentDashboardPage() {
         ticketType: data?.ticketType || "",
         status: "success",
         scannedAt: new Date().toISOString(),
-        scannedBy: undefined,
-        checkedInAt: undefined,
       }
 
       setLastResult(result)
@@ -114,25 +119,17 @@ export default function AgentDashboardPage() {
       let scannedByAgent: string | undefined = undefined
       let checkedInAtTime: string | undefined = undefined
 
-      if (err.response && err.response.data && err.response.data.message) {
-        const msg = err.response.data.message as string
-        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("used")) {
+      if (err.response && err.response.data) {
+        const { message, details } = err.response.data;
+        const msg = (message as string).toLowerCase();
+
+        if (msg.includes("already") || msg.includes("used")) {
           status = "already_scanned"
-          const match = msg.match(/checked in by (.+?) at (.+?)(?:\.|$)/i)
-          if (match && match[1] && match[2]) {
-            scannedByAgent = match[1]
-            checkedInAtTime = match[2]
-          } else {
-            // Fallback for older message format
-            const agentMatch = msg.match(/checked in by (.+?)(?:\.|$)/i)
-            if (agentMatch && agentMatch[1]) {
-              scannedByAgent = agentMatch[1]
-            }
+          if (details) {
+            scannedByAgent = details.checkedInBy
+            checkedInAtTime = details.checkedInAt
           }
         }
-      } else if (err instanceof Error) {
-        const msg = err.message.toLowerCase()
-        if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
       }
 
       const result: ScanResult = {
@@ -211,8 +208,6 @@ export default function AgentDashboardPage() {
     router.push("/login")
   }
 
-  const successCount = scanHistory.filter((s) => s.status === "success").length
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
       <header className="bg-white/80 backdrop-blur border-b border-zinc-200 sticky top-0 z-10">
@@ -243,11 +238,11 @@ export default function AgentDashboardPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 shadow text-center">
-            <p className="text-3xl font-bold text-green-600">{successCount}</p>
+            <p className="text-3xl font-bold text-green-600">{stats.successfulCheckIns}</p>
             <p className="text-sm text-zinc-500">Successful Check-ins</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow text-center">
-            <p className="text-3xl font-bold text-zinc-900">{scanHistory.length}</p>
+            <p className="text-3xl font-bold text-zinc-900">{stats.totalScans}</p>
             <p className="text-sm text-zinc-500">Total Scans</p>
           </div>
         </div>
