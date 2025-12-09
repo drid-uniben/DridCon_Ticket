@@ -86,6 +86,10 @@ export default function FormPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!file) {
+      setMessage({ type: "error", text: "Payment receipt is required." })
+      return
+    }
     if (loading) return
     setLoading(true)
     setMessage(null)
@@ -165,8 +169,8 @@ export default function FormPage() {
             />
           </FormCard>
 
-          <FormCard heading="Upload payment receipt" description="Drag & drop or click to browse.">
-            <FileField label="" name="receipt" value={file} onChange={setFile} />
+          <FormCard heading="Upload payment receipt *" description="Drag & drop or click to browse.">
+            <FileField label="" name="receipt" value={file} onChange={setFile} required />
             {file && <p className="mt-3 text-sm text-purple-700">Selected file: {file.name}</p>}
             <div className="mt-4 space-y-1 rounded-2xl bg-purple-50/80 p-4 text-sm text-zinc-600">
               <p className="text-xs uppercase tracking-wide text-purple-600">Payment information</p>

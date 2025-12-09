@@ -81,6 +81,10 @@ class AuthController {
     const { name, email, phoneNumber, ticketType, designation, department } =
       req.body;
 
+    if (!req.file) {
+      throw new BadRequestError('Payment receipt is required.');
+    }
+
     // Handle file upload - multer stores the file info in req.file
     const paymentProof = req.file ? `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${req.file.filename}` : '';
 

@@ -7,9 +7,10 @@ type Props = {
   name?: string
   value: File | null
   onChange: (file: File | null) => void
+  required?: boolean
 }
 
-export default function FileField({ label, name, value, onChange }: Props) {
+export default function FileField({ label, name, value, onChange, required }: Props) {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -71,7 +72,12 @@ export default function FileField({ label, name, value, onChange }: Props) {
 
   return (
     <div className="flex w-full flex-col gap-2">
-      {label && <span className="text-sm font-medium text-zinc-900">{label}</span>}
+      {label && (
+        <span className="text-sm font-medium text-zinc-900">
+          {label}
+          {required && <span className="text-red-500">*</span>}
+        </span>
+      )}
 
       {/* Hidden input */}
       <input
@@ -81,6 +87,7 @@ export default function FileField({ label, name, value, onChange }: Props) {
         accept="image/*"
         className="hidden"
         onChange={(event) => handleFiles(event.target.files)}
+        required={required}
       />
 
       {/* Upload box (hidden when preview exists) */}
