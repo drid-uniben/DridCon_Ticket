@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
 import { adminApi } from "@/lib/api"
+import Image from "next/image"
 
 type Attendee = {
   _id: string
@@ -308,9 +309,11 @@ export default function AdminDashboardPage() {
           )}
 
           {isModalOpen && selectedAttendee && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
-              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg">
-                <h2 className="text-lg font-semibold mb-4">Attendee Details</h2>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 px-4">
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div>
+                  <h2 className="text-lg font-semibold mb-4">Attendee Details</h2>
+                </div>
                 <div className="space-y-4">
                   <p><strong>Name:</strong> {selectedAttendee.name}</p>
                   <p><strong>Email:</strong> {selectedAttendee.email}</p>
@@ -329,16 +332,20 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
                   {selectedAttendee.paymentProof && (
-                    <div>
-                      <p className="font-medium">Payment Receipt</p>
-                      <img
-                        src={selectedAttendee.paymentProof}
-                        alt="Payment Receipt"
-                        className="w-full h-auto rounded-lg border"
-                      />
+                    <div className="mt-4">
+                      <p className="font-medium mb-2">Payment Receipt</p>
+                      <div className="relative w-full h-96 rounded-lg border overflow-hidden">
+                        <Image
+                          src={selectedAttendee.paymentProof}
+                          alt="Payment Receipt"
+                          layout="fill"
+                          objectFit="contain"
+                          className="rounded-lg"
+                        />
+                      </div>
                     </div>
                   )}
-                  <div className="flex gap-2 justify-end">
+                  <div className="flex gap-2 justify-end pt-4 sticky bottom-0 bg-white z-10 py-2">
                     <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                       Close
                     </Button>

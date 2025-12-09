@@ -20,6 +20,7 @@ type ScanResult = {
   status: "success" | "already_scanned" | "invalid"
   scannedAt: string
   scannedBy?: string
+  checkedInAt?: string
 }
 
 export default function AgentDashboardPage() {
@@ -49,27 +50,36 @@ export default function AgentDashboardPage() {
     inputRef.current?.focus()
   }, [])
 
-  // Load scan history
+
+
+  // Load scan history from server
   useEffect(() => {
-    const saved = localStorage.getItem("scanHistory")
-    if (saved) {
+    const fetchScanHistory = async () => {
       try {
-        setScanHistory(JSON.parse(saved))
-      } catch {}
-    }
-  }, [])
-
-  // Replace manual scanner: use integrated camera scanner
-  useEffect(() => {
-    if (!isScannerOpen) {
-      if (controlsRef.current) {
-        controlsRef.current.stop()
-        controlsRef.current = null
+        const response = await scanApi.getScanHistory()
+        // Assuming response.data is an array of scan history objects
+        // The structure of the objects in the array should match ScanResult type
+        // if not, then a mapping is needed.
+        const formattedHistory: ScanResult[] = response.data.map((item: any) => ({
+          id: item._id || item.id, // Use _id from MongoDB if applicable
+          attendeeName: item.attendeeName || "Unknown",
+          email: item.email || "",
+          ticketType: item.ticketType || "",
+          status: item.status, // Assuming status is directly compatible
+          scannedAt: item.scannedAt,
+          scannedBy: item.scannedBy, // This might be null for success scans
+        }))
+        setScanHistory(formattedHistory)
+      } catch (error) {
+        console.error("Failed to fetch scan history:", error)
+        // Optionally display an error message to the user
       }
-      return
     }
 
-    const codeReader = new BrowserQRCodeReader()
+    if (user && user.role === "agent") {
+      fetchScanHistory()
+    }
+  }, [user]) // Depend on user to ensure it runs after user is loaded
 
     const startCamera = async () => {
       try {
@@ -128,14 +138,34 @@ export default function AgentDashboardPage() {
         ticketType: data.attendee?.ticketType || "",
         status: "success",
         scannedAt: new Date().toISOString(),
+        scannedBy: undefined,
+        checkedInAt: undefined,
       }
 
       setLastResult(result)
       addToHistory(result)
-    } catch (err) {
+    } catch (err: any) {
       let status: "already_scanned" | "invalid" = "invalid"
+      let scannedByAgent: string | undefined = undefined
+      let checkedInAtTime: string | undefined = undefined
 
-      if (err instanceof Error) {
+      if (err.response && err.response.data && err.response.data.message) {
+        const msg = err.response.data.message as string
+        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("used")) {
+          status = "already_scanned"
+          const match = msg.match(/checked in by (.+?) at (.+?)(?:\.|$)/i)
+          if (match && match[1] && match[2]) {
+            scannedByAgent = match[1]
+            checkedInAtTime = match[2]
+          } else {
+            // Fallback for older message format
+            const agentMatch = msg.match(/checked in by (.+?)(?:\.|$)/i)
+            if (agentMatch && agentMatch[1]) {
+              scannedByAgent = agentMatch[1]
+            }
+          }
+        }
+      } else if (err instanceof Error) {
         const msg = err.message.toLowerCase()
         if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
       }
@@ -147,6 +177,8 @@ export default function AgentDashboardPage() {
         ticketType: "",
         status,
         scannedAt: new Date().toISOString(),
+        scannedBy: scannedByAgent,
+        checkedInAt: checkedInAtTime,
       }
 
       setLastResult(result)
@@ -175,14 +207,34 @@ export default function AgentDashboardPage() {
         ticketType: data.attendee?.ticketType || "",
         status: "success",
         scannedAt: new Date().toISOString(),
+        scannedBy: undefined,
+        checkedInAt: undefined,
       }
 
       setLastResult(result)
       addToHistory(result)
-    } catch (err) {
+    } catch (err: any) {
       let status: "already_scanned" | "invalid" = "invalid"
+      let scannedByAgent: string | undefined = undefined
+      let checkedInAtTime: string | undefined = undefined
 
-      if (err instanceof Error) {
+      if (err.response && err.response.data && err.response.data.message) {
+        const msg = err.response.data.message as string
+        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("used")) {
+          status = "already_scanned"
+          const match = msg.match(/checked in by (.+?) at (.+?)(?:\.|$)/i)
+          if (match && match[1] && match[2]) {
+            scannedByAgent = match[1]
+            checkedInAtTime = match[2]
+          } else {
+            // Fallback for older message format
+            const agentMatch = msg.match(/checked in by (.+?)(?:\.|$)/i)
+            if (agentMatch && agentMatch[1]) {
+              scannedByAgent = agentMatch[1]
+            }
+          }
+        }
+      } else if (err instanceof Error) {
         const msg = err.message.toLowerCase()
         if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
       }
@@ -194,6 +246,8 @@ export default function AgentDashboardPage() {
         ticketType: "",
         status,
         scannedAt: new Date().toISOString(),
+        scannedBy: scannedByAgent,
+        checkedInAt: checkedInAtTime,
       }
 
       setLastResult(result)
@@ -208,13 +262,9 @@ export default function AgentDashboardPage() {
   function addToHistory(result: ScanResult) {
     const updated = [result, ...scanHistory].slice(0, 50)
     setScanHistory(updated)
-    localStorage.setItem("scanHistory", JSON.stringify(updated))
   }
 
-  function clearHistory() {
-    setScanHistory([])
-    localStorage.removeItem("scanHistory")
-  }
+
 
   async function handleLogout() {
     await logout()
@@ -296,6 +346,12 @@ export default function AgentDashboardPage() {
                 <>
                   <div className="text-6xl mb-2">⚠️</div>
                   <h3 className="text-2xl font-bold text-yellow-700">Already Checked In</h3>
+                  {lastResult.scannedBy && (
+                    <p className="text-lg text-yellow-600 mt-2">
+                      by {lastResult.scannedBy}
+                      {lastResult.checkedInAt && ` at ${lastResult.checkedInAt}`}
+                    </p>
+                  )}
                 </>
               )}
 
@@ -320,9 +376,7 @@ export default function AgentDashboardPage() {
           </button>
 
           {scanHistory.length > 0 && (
-            <button onClick={clearHistory} className="text-sm text-red-500 hover:underline">
-              Clear History
-            </button>
+            null
           )}
         </div>
 

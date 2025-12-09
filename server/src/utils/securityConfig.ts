@@ -15,7 +15,7 @@ export const helmetOptions: HelmetOptions = {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:', process.env.API_URL || 'http://localhost:3000'],
+      imgSrc: ["'self'", 'data:', 'https:'],
       upgradeInsecureRequests: [],
     },
   },
