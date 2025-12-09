@@ -157,7 +157,7 @@ export default function FormPage() {
 
         <FormDescription title="About the event" sections={descriptionSections} previewSections={1} />
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
           <FormCard heading="Contact information" description="Tell us how to reach you.">
             <div className="space-y-4">
               <TextField label="Full Name" name="name" value={name} onChange={setName} required placeholder="John Doe" />
@@ -183,7 +183,7 @@ export default function FormPage() {
             />
           </FormCard>
 
-          <FormCard heading="Upload payment receipt *" description="Drag & drop or click to browse.">
+          <FormCard heading="Upload payment receipt" description="Drag & drop or click to browse.">
             <FileField label="" name="receipt" value={file} onChange={setFile} required />
             {file && <p className="mt-3 text-sm text-purple-700">Selected file: {file.name}</p>}
             <div className="mt-4 space-y-1 rounded-2xl bg-purple-50/80 p-4 text-sm text-zinc-600">
