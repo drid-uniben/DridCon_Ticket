@@ -81,6 +81,17 @@ export default function AgentDashboardPage() {
     }
   }, [user]) // Depend on user to ensure it runs after user is loaded
 
+  useEffect(() => {
+    if (!isScannerOpen) {
+      if (controlsRef.current) {
+        controlsRef.current.stop()
+        controlsRef.current = null
+      }
+      return
+    }
+
+    const codeReader = new BrowserQRCodeReader()
+
     const startCamera = async () => {
       try {
         const devices = await BrowserQRCodeReader.listVideoInputDevices()
@@ -94,8 +105,8 @@ export default function AgentDashboardPage() {
           videoRef.current!,
           (
             result: Result | undefined,
-    error: Exception | undefined,
-    controls: IScannerControls
+            error: Exception | undefined,
+            controls: IScannerControls
           ) => {
             if (result) {
               controls.stop()

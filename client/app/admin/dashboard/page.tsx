@@ -40,6 +40,35 @@ export default function AdminDashboardPage() {
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editedTicketType, setEditedTicketType] = useState<string>("")
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (selectedAttendee?.paymentProof) {
+      let objectUrl: string
+      const fetchImage = async () => {
+        try {
+          const response = await fetch(selectedAttendee.paymentProof!)
+          if (!response.ok) {
+            throw new Error("Network response was not ok")
+          }
+          const blob = await response.blob()
+          objectUrl = URL.createObjectURL(blob)
+          setImageSrc(objectUrl)
+        } catch (error) {
+          console.error("Failed to fetch image:", error)
+          setImageSrc(null) // Or a placeholder image
+        }
+      }
+
+      fetchImage()
+
+      return () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl)
+        }
+      }
+    }
+  }, [selectedAttendee])
 
   // Manual registration form
   const [manualForm, setManualForm] = useState({
@@ -334,15 +363,15 @@ export default function AdminDashboardPage() {
                   {selectedAttendee.paymentProof && (
                     <div className="mt-4">
                       <p className="font-medium mb-2">Payment Receipt</p>
-                      <div className="relative w-full h-96 rounded-lg border overflow-hidden">
-                        <Image
-                          src={selectedAttendee.paymentProof}
+                      {imageSrc ? (
+                        <img
+                          src={imageSrc}
                           alt="Payment Receipt"
-                          layout="fill"
-                          objectFit="contain"
-                          className="rounded-lg"
+                          className="w-full h-auto rounded-lg border"
                         />
-                      </div>
+                      ) : (
+                        <p>Loading image...</p>
+                      )}
                     </div>
                   )}
                   <div className="flex gap-2 justify-end pt-4 sticky bottom-0 bg-white z-10 py-2">
