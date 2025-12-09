@@ -1,6 +1,5 @@
-// Updated AgentDashboardPage with QR scanner integrated from UserQRScanner
-
 "use client"
+
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
@@ -26,7 +25,6 @@ type ScanResult = {
 export default function AgentDashboardPage() {
   const router = useRouter()
   const { user, logout } = useAuth()
-  const [qrInput, setQrInput] = useState("")
   const [scanning, setScanning] = useState(false)
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([])
@@ -62,11 +60,11 @@ export default function AgentDashboardPage() {
         // if not, then a mapping is needed.
         const formattedHistory: ScanResult[] = response.data.map((item: any) => ({
           id: item._id || item.id, // Use _id from MongoDB if applicable
-          attendeeName: item.attendeeName || "Unknown",
+          attendeeName: item.name || "Unknown",
           email: item.email || "",
           ticketType: item.ticketType || "",
           status: item.status, // Assuming status is directly compatible
-          scannedAt: item.scannedAt,
+          scannedAt: item.checkedInAt,
           scannedBy: item.scannedBy, // This might be null for success scans
         }))
         setScanHistory(formattedHistory)
@@ -75,11 +73,85 @@ export default function AgentDashboardPage() {
         // Optionally display an error message to the user
       }
     }
-
+    
     if (user && user.role === "agent") {
       fetchScanHistory()
     }
   }, [user]) // Depend on user to ensure it runs after user is loaded
+  
+  const addToHistory = useCallback(
+   (result: ScanResult) => {
+     const updated = [result, ...scanHistory].slice(0, 50);
+     setScanHistory(updated);
+   },
+   [scanHistory, setScanHistory]
+ );
+
+  // Scan handler for camera scan
+  const handleCameraScan = useCallback(async (token: string) => {
+    setIsScannerOpen(false)
+    setScanning(true)
+
+    try {
+      const res = await scanApi.scanQR(token)
+      const data = res.data || res
+
+      const result: ScanResult = {
+        id: Date.now().toString(),
+        attendeeName: data?.name || "Unknown",
+        email: data?.email || "",
+        ticketType: data?.ticketType || "",
+        status: "success",
+        scannedAt: new Date().toISOString(),
+        scannedBy: undefined,
+        checkedInAt: undefined,
+      }
+
+      setLastResult(result)
+      addToHistory(result)
+    } catch (err: any) {
+      let status: "already_scanned" | "invalid" = "invalid"
+      let scannedByAgent: string | undefined = undefined
+      let checkedInAtTime: string | undefined = undefined
+
+      if (err.response && err.response.data && err.response.data.message) {
+        const msg = err.response.data.message as string
+        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("used")) {
+          status = "already_scanned"
+          const match = msg.match(/checked in by (.+?) at (.+?)(?:\.|$)/i)
+          if (match && match[1] && match[2]) {
+            scannedByAgent = match[1]
+            checkedInAtTime = match[2]
+          } else {
+            // Fallback for older message format
+            const agentMatch = msg.match(/checked in by (.+?)(?:\.|$)/i)
+            if (agentMatch && agentMatch[1]) {
+              scannedByAgent = agentMatch[1]
+            }
+          }
+        }
+      } else if (err instanceof Error) {
+        const msg = err.message.toLowerCase()
+        if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
+      }
+
+      const result: ScanResult = {
+        id: Date.now().toString(),
+        attendeeName: "N/A",
+        email: "",
+        ticketType: "",
+        status,
+        scannedAt: new Date().toISOString(),
+        scannedBy: scannedByAgent,
+        checkedInAt: checkedInAtTime,
+      }
+
+      setLastResult(result)
+      addToHistory(result)
+    } finally {
+      setScanning(false)
+    }
+  }, [addToHistory])
 
   useEffect(() => {
     if (!isScannerOpen) {
@@ -131,150 +203,7 @@ export default function AgentDashboardPage() {
         controlsRef.current = null
       }
     }
-  }, [isScannerOpen])
-
-  // Scan handler for camera scan
-  const handleCameraScan = useCallback(async (token: string) => {
-    setIsScannerOpen(false)
-    setScanning(true)
-
-    try {
-      const res = await scanApi.scanQR(token)
-      const data = res.data || res
-
-      const result: ScanResult = {
-        id: Date.now().toString(),
-        attendeeName: data.attendee?.name || "Unknown",
-        email: data.attendee?.email || "",
-        ticketType: data.attendee?.ticketType || "",
-        status: "success",
-        scannedAt: new Date().toISOString(),
-        scannedBy: undefined,
-        checkedInAt: undefined,
-      }
-
-      setLastResult(result)
-      addToHistory(result)
-    } catch (err: any) {
-      let status: "already_scanned" | "invalid" = "invalid"
-      let scannedByAgent: string | undefined = undefined
-      let checkedInAtTime: string | undefined = undefined
-
-      if (err.response && err.response.data && err.response.data.message) {
-        const msg = err.response.data.message as string
-        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("used")) {
-          status = "already_scanned"
-          const match = msg.match(/checked in by (.+?) at (.+?)(?:\.|$)/i)
-          if (match && match[1] && match[2]) {
-            scannedByAgent = match[1]
-            checkedInAtTime = match[2]
-          } else {
-            // Fallback for older message format
-            const agentMatch = msg.match(/checked in by (.+?)(?:\.|$)/i)
-            if (agentMatch && agentMatch[1]) {
-              scannedByAgent = agentMatch[1]
-            }
-          }
-        }
-      } else if (err instanceof Error) {
-        const msg = err.message.toLowerCase()
-        if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
-      }
-
-      const result: ScanResult = {
-        id: Date.now().toString(),
-        attendeeName: "N/A",
-        email: "",
-        ticketType: "",
-        status,
-        scannedAt: new Date().toISOString(),
-        scannedBy: scannedByAgent,
-        checkedInAt: checkedInAtTime,
-      }
-
-      setLastResult(result)
-      addToHistory(result)
-    } finally {
-      setScanning(false)
-    }
-  }, [scanHistory])
-
-  // Manual scan handler (unchanged except scanner removed)
-  async function handleScan(e: React.FormEvent) {
-    e.preventDefault()
-    if (!qrInput.trim() || scanning) return
-
-    setScanning(true)
-    setLastResult(null)
-
-    try {
-      const res = await scanApi.scanQR(qrInput)
-      const data = res.data || res
-
-      const result: ScanResult = {
-        id: Date.now().toString(),
-        attendeeName: data.attendee?.name || "Unknown",
-        email: data.attendee?.email || "",
-        ticketType: data.attendee?.ticketType || "",
-        status: "success",
-        scannedAt: new Date().toISOString(),
-        scannedBy: undefined,
-        checkedInAt: undefined,
-      }
-
-      setLastResult(result)
-      addToHistory(result)
-    } catch (err: any) {
-      let status: "already_scanned" | "invalid" = "invalid"
-      let scannedByAgent: string | undefined = undefined
-      let checkedInAtTime: string | undefined = undefined
-
-      if (err.response && err.response.data && err.response.data.message) {
-        const msg = err.response.data.message as string
-        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("used")) {
-          status = "already_scanned"
-          const match = msg.match(/checked in by (.+?) at (.+?)(?:\.|$)/i)
-          if (match && match[1] && match[2]) {
-            scannedByAgent = match[1]
-            checkedInAtTime = match[2]
-          } else {
-            // Fallback for older message format
-            const agentMatch = msg.match(/checked in by (.+?)(?:\.|$)/i)
-            if (agentMatch && agentMatch[1]) {
-              scannedByAgent = agentMatch[1]
-            }
-          }
-        }
-      } else if (err instanceof Error) {
-        const msg = err.message.toLowerCase()
-        if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
-      }
-
-      const result: ScanResult = {
-        id: Date.now().toString(),
-        attendeeName: "N/A",
-        email: "",
-        ticketType: "",
-        status,
-        scannedAt: new Date().toISOString(),
-        scannedBy: scannedByAgent,
-        checkedInAt: checkedInAtTime,
-      }
-
-      setLastResult(result)
-      addToHistory(result)
-    } finally {
-      setScanning(false)
-      setQrInput("")
-      inputRef.current?.focus()
-    }
-  }
-
-  function addToHistory(result: ScanResult) {
-    const updated = [result, ...scanHistory].slice(0, 50)
-    setScanHistory(updated)
-  }
-
+  }, [handleCameraScan, isScannerOpen])
 
 
   async function handleLogout() {
@@ -291,8 +220,8 @@ export default function AgentDashboardPage() {
           <div className="flex items-center gap-3">
             <Logo size={48} />
             <div>
-              <h1 className="text-xl font-bold text-zinc-900">Agent Scanner</h1>
-              <p className="text-xs text-zinc-500">Welcome, {user?.name || "Agent"}</p>
+              <h1 className="text-xl font-bold text-zinc-900">Frontdesk Scanner</h1>
+              <p className="text-xs text-zinc-500">Welcome, {user?.name || "Frontdesk"}</p>
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout}>Logout</Button>
