@@ -9,10 +9,6 @@ const router = Router();
 const standardLimit = rateLimiter(20, 60 * 60 * 1000);
 
 const getUploadsPath = (): string => {
-  // This simplified path works for both dev (from src) and prod (from dist)
-  // assuming the 'uploads' directory is located alongside the 'routes' directory.
-  // In dev: src/routes -> ../ -> src/ -> src/uploads
-  // In prod: dist/routes -> ../ -> dist/ -> dist/uploads
   return path.join(__dirname, '..', 'uploads', 'documents');
 };
 

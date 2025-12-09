@@ -32,14 +32,17 @@ export const registrationConfirmationTemplate = (name: string): string => {
         <p style="${paragraphStyles}">You will receive your ticket details, including your QR code for entry by mail, as soon as your payment is confirmed by our team.</p>
         
         <div style="${eventDetailsStyle}">
-          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research, Development & Innovation Conference</p>
-          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, UNIBEN</p>
+          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research Conference and Innovation Fair.</p>
+          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, University of Benin.</p>
           <p style="margin: 0;">Get ready for an immersive experience with insightful talks, hands-on workshops, and networking opportunities with leading experts in the field.</p>
         </div>
 
         <p style="${paragraphStyles}">We look forward to seeing you at DridCon!</p>
 
         <div style="${footerStyle}">
+          <p style="font-size: 14px; color: #6b7280; margin: 5px 0;">
+            <strong>Join our WhatsApp group for live updates and important announcements:</strong> <a href="https://chat.whatsapp.com/FPqBJ7fJNIV69moaqqcfeq?mode=hqrc">DridCon Attendees Group</a>
+          </p>
           <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">
             For inquiries: drid@uniben.edu
           </p>

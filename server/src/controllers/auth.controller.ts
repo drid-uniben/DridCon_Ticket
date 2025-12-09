@@ -82,7 +82,7 @@ class AuthController {
       req.body;
 
     // Handle file upload - multer stores the file info in req.file
-    const paymentProof = req.file ? req.file.filename : '';
+    const paymentProof = req.file ? `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${req.file.filename}` : '';
 
     if (!name || !email || !phoneNumber || !ticketType) {
       throw new BadRequestError(
@@ -105,6 +105,9 @@ class AuthController {
       designation,
       department,
       paymentProof,
+      originalFilename: req.file ? req.file.originalname : '',
+      fileSize: req.file ? req.file.size : 0,
+      fileType: req.file ? req.file.mimetype : '',
       role: UserRole.USER,
       isActive: true,
     });

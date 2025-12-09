@@ -44,6 +44,9 @@ export interface IUser extends Document {
   qrCode?: string;
   paymentStatus: PaymentStatus;
   paymentProof?: string;
+  originalFilename?: string;
+  fileSize?: number;
+  fileType?: string;
   checkInStatus: CheckInStatus;
   checkedInAt?: Date;
   checkedInBy?: Schema.Types.ObjectId;
@@ -124,6 +127,15 @@ const UserSchema: Schema<IUser> = new Schema(
       default: PaymentStatus.PENDING,
     },
     paymentProof: {
+      type: String,
+    },
+    originalFilename: {
+      type: String,
+    },
+    fileSize: {
+      type: Number,
+    },
+    fileType: {
       type: String,
     },
     checkInStatus: {

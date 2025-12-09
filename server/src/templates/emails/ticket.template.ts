@@ -6,7 +6,11 @@ import {
   responsiveStyles,
 } from './styles';
 
-export const ticketTemplate = (name: string, qrCodeDataUrl: string, ticketType: string): string => {
+export const ticketTemplate = (
+  name: string,
+  qrCodeDataUrl: string,
+  ticketType: string
+): string => {
   const eventDetailsStyle = `
     background: #f3f4f6;
     padding: 20px;
@@ -42,9 +46,9 @@ export const ticketTemplate = (name: string, qrCodeDataUrl: string, ticketType: 
         </div>
 
         <div style="${eventDetailsStyle}">
-          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research, Development & Innovation Conference</p>
+          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research Conference and Innovation Fair.</p>
           <p style="margin: 0 0 10px 0;"><strong>Ticket Type:</strong> ${ticketType}</p>
-          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, UNIBEN</p>
+          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, University of Benin.</p>
           <p style="margin: 0;"><strong>Important:</strong> Bring this QR code (digital or printed)</p>
         </div>
 
@@ -57,6 +61,9 @@ export const ticketTemplate = (name: string, qrCodeDataUrl: string, ticketType: 
         <p style="${paragraphStyles}">We look forward to seeing you at DridCon!</p>
         
         <div style="${footerStyle}">
+          <p style="font-size: 14px; color: #6b7280; margin: 5px 0;">
+            <strong>Join our WhatsApp group for live updates and important announcements:</strong> <a href="https://chat.whatsapp.com/FPqBJ7fJNIV69moaqqcfeq?mode=hqrc">DridCon Attendees Group</a>
+          </p>
           <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">
             For inquiries: drid@uniben.edu
           </p>
