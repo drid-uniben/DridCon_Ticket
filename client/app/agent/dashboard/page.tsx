@@ -1,10 +1,16 @@
+// Updated AgentDashboardPage with QR scanner integrated from UserQRScanner
+
 "use client"
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
 import { scanApi } from "@/lib/api"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser"
+import { Result, Exception } from "@zxing/library"
+
 
 type ScanResult = {
   id: string
@@ -24,7 +30,12 @@ export default function AgentDashboardPage() {
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // QR Scanner refs
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const controlsRef = useRef<IScannerControls | null>(null)
 
   // Check auth on mount
   useEffect(() => {
@@ -38,18 +49,114 @@ export default function AgentDashboardPage() {
     inputRef.current?.focus()
   }, [])
 
-  // Load scan history from localStorage
+  // Load scan history
   useEffect(() => {
     const saved = localStorage.getItem("scanHistory")
     if (saved) {
       try {
         setScanHistory(JSON.parse(saved))
-      } catch {
-        // ignore parse errors
-      }
+      } catch {}
     }
   }, [])
 
+  // Replace manual scanner: use integrated camera scanner
+  useEffect(() => {
+    if (!isScannerOpen) {
+      if (controlsRef.current) {
+        controlsRef.current.stop()
+        controlsRef.current = null
+      }
+      return
+    }
+
+    const codeReader = new BrowserQRCodeReader()
+
+    const startCamera = async () => {
+      try {
+        const devices = await BrowserQRCodeReader.listVideoInputDevices()
+        if (devices.length === 0) return
+
+        const selectedDeviceId =
+          devices.find((d: MediaDeviceInfo) => d.label.toLowerCase().includes("back"))?.deviceId || devices[0].deviceId
+
+        controlsRef.current = await codeReader.decodeFromVideoDevice(
+          selectedDeviceId,
+          videoRef.current!,
+          (
+            result: Result | undefined,
+    error: Exception | undefined,
+    controls: IScannerControls
+          ) => {
+            if (result) {
+              controls.stop()
+              controlsRef.current = null
+              handleCameraScan(result.getText())
+            }
+            if (error && error.name !== "NotFoundException") {
+              console.error(error)
+            }
+          }
+        )
+      } catch (err) {
+        console.error("Camera error:", err)
+      }
+    }
+
+    startCamera()
+
+    return () => {
+      if (controlsRef.current) {
+        controlsRef.current.stop()
+        controlsRef.current = null
+      }
+    }
+  }, [isScannerOpen])
+
+  // Scan handler for camera scan
+  const handleCameraScan = useCallback(async (token: string) => {
+    setIsScannerOpen(false)
+    setScanning(true)
+
+    try {
+      const res = await scanApi.scanQR(token)
+      const data = res.data || res
+
+      const result: ScanResult = {
+        id: Date.now().toString(),
+        attendeeName: data.attendee?.name || "Unknown",
+        email: data.attendee?.email || "",
+        ticketType: data.attendee?.ticketType || "",
+        status: "success",
+        scannedAt: new Date().toISOString(),
+      }
+
+      setLastResult(result)
+      addToHistory(result)
+    } catch (err) {
+      let status: "already_scanned" | "invalid" = "invalid"
+
+      if (err instanceof Error) {
+        const msg = err.message.toLowerCase()
+        if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
+      }
+
+      const result: ScanResult = {
+        id: Date.now().toString(),
+        attendeeName: "N/A",
+        email: "",
+        ticketType: "",
+        status,
+        scannedAt: new Date().toISOString(),
+      }
+
+      setLastResult(result)
+      addToHistory(result)
+    } finally {
+      setScanning(false)
+    }
+  }, [scanHistory])
+
+  // Manual scan handler (unchanged except scanner removed)
   async function handleScan(e: React.FormEvent) {
     e.preventDefault()
     if (!qrInput.trim() || scanning) return
@@ -74,13 +181,10 @@ export default function AgentDashboardPage() {
       addToHistory(result)
     } catch (err) {
       let status: "already_scanned" | "invalid" = "invalid"
-      let scannedBy: string | undefined = undefined
 
       if (err instanceof Error) {
-        const errorMessage = err.message.toLowerCase()
-        if (errorMessage.includes("already") || errorMessage.includes("used")) {
-          status = "already_scanned"
-        }
+        const msg = err.message.toLowerCase()
+        if (msg.includes("already") || msg.includes("used")) status = "already_scanned"
       }
 
       const result: ScanResult = {
@@ -90,7 +194,6 @@ export default function AgentDashboardPage() {
         ticketType: "",
         status,
         scannedAt: new Date().toISOString(),
-        scannedBy,
       }
 
       setLastResult(result)
@@ -122,7 +225,6 @@ export default function AgentDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -132,14 +234,23 @@ export default function AgentDashboardPage() {
               <p className="text-xs text-zinc-500">Welcome, {user?.name || "Agent"}</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
-          </Button>
+          <Button variant="outline" onClick={handleLogout}>Logout</Button>
         </div>
       </header>
 
+      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Scan QR Code</DialogTitle>
+            <DialogDescription>Point your camera at the QR code.</DialogDescription>
+          </DialogHeader>
+          <div className="bg-black rounded-lg overflow-hidden h-64 mt-4">
+            <video ref={videoRef} className="w-full h-full object-cover" />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 shadow text-center">
             <p className="text-3xl font-bold text-green-600">{successCount}</p>
@@ -151,27 +262,15 @@ export default function AgentDashboardPage() {
           </div>
         </div>
 
-        {/* Scanner */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4 text-center">Scan QR Code</h2>
-          <form onSubmit={handleScan} className="space-y-4">
-            <input
-              ref={inputRef}
-              type="text"
-              value={qrInput}
-              onChange={(e) => setQrInput(e.target.value)}
-              placeholder="Scan or enter QR code..."
-              className="w-full rounded-lg border border-zinc-300 px-4 py-4 text-lg text-center focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
-              autoFocus
-            />
-            <Button
-              type="submit"
-              disabled={scanning || !qrInput.trim()}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 py-6 text-lg"
-            >
-              {scanning ? "Verifying..." : "Verify Entry"}
-            </Button>
-          </form>
+
+          <Button
+            onClick={() => setIsScannerOpen(true)}
+            className="w-full mb-4 bg-purple-600  hover:bg-purple-700 py-6 text-lg"
+          >
+            Open Camera Scanner
+          </Button>
 
           {/* Last Result */}
           {lastResult && (
@@ -192,15 +291,14 @@ export default function AgentDashboardPage() {
                   <p className="text-sm text-green-500 capitalize">{lastResult.ticketType} ticket</p>
                 </>
               )}
+
               {lastResult.status === "already_scanned" && (
                 <>
                   <div className="text-6xl mb-2">⚠️</div>
                   <h3 className="text-2xl font-bold text-yellow-700">Already Checked In</h3>
-                  {lastResult.scannedBy && (
-                    <p className="text-sm text-yellow-600 mt-2">Previously scanned by: {lastResult.scannedBy}</p>
-                  )}
                 </>
               )}
+
               {lastResult.status === "invalid" && (
                 <>
                   <div className="text-6xl mb-2">❌</div>
@@ -220,6 +318,7 @@ export default function AgentDashboardPage() {
           >
             {showHistory ? "Hide" : "Show"} Scan History ({scanHistory.length})
           </button>
+
           {scanHistory.length > 0 && (
             <button onClick={clearHistory} className="text-sm text-red-500 hover:underline">
               Clear History
@@ -245,6 +344,7 @@ export default function AgentDashboardPage() {
                   <p className="font-medium">{scan.attendeeName}</p>
                   <p className="text-xs text-zinc-500">{new Date(scan.scannedAt).toLocaleTimeString()}</p>
                 </div>
+
                 <span
                   className={`px-2 py-1 rounded-full text-xs ${
                     scan.status === "success"
