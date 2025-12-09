@@ -4,7 +4,6 @@ import {
   headerStyles,
   paragraphStyles,
   buttonStyles,
-  responsiveStyles,
 } from './styles';
 
 export const attendeeInviteTemplate = (registrationUrl: string): string => {
@@ -15,7 +14,7 @@ export const attendeeInviteTemplate = (registrationUrl: string): string => {
   `;
 
   return `
-    ${responsiveStyles}
+    
     <div class="email-container" style="${containerStyles}">
       <div class="email-card" style="${cardStyles}">
         <h1 style="${headerStyles}">DridCon Registration Invitation</h1>

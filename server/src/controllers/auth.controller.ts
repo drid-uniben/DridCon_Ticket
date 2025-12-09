@@ -308,10 +308,10 @@ class AuthController {
 
 
   completeRegistration = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { inviteToken, name, phoneNumber, ticketType, designation, department } = req.body;
+    const { inviteToken, name, phoneNumber, designation, department } = req.body;
 
-    if (!inviteToken || !name || !phoneNumber || !ticketType) {
-      throw new BadRequestError('Invite token, name, phone number, and ticket type are required.');
+    if (!inviteToken || !name || !phoneNumber) {
+      throw new BadRequestError('Invite token, name and phone number are required.');
     }
 
     const user = await User.findOne({ inviteToken, inviteTokenExpires: { $gt: new Date() } });
@@ -324,7 +324,7 @@ class AuthController {
 
     user.name = name;
     user.phoneNumber = phoneNumber;
-    user.ticketType = ticketType;
+    
     user.designation = designation;
     user.department = department;
     user.qrCode = token;

@@ -49,6 +49,7 @@ export const ticketTemplate = (
           <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research Conference and Innovation Fair.</p>
           <p style="margin: 0 0 10px 0;"><strong>Ticket Type:</strong> ${ticketType}</p>
           <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, University of Benin.</p>
+          <p style="margin: 0 0 10px 0;"><strong>Date:</strong> January 21, 2026</p>
           <p style="margin: 0;"><strong>Important:</strong> Bring this QR code (digital or printed)</p>
         </div>
 

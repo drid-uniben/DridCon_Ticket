@@ -8,6 +8,7 @@ import {
   registrationConfirmationTemplate,
 } from '../templates/emails';
 
+
 validateEnv();
 
 class EmailService {
