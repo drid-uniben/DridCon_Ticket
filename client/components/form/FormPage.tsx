@@ -86,10 +86,24 @@ export default function FormPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file) {
-      setMessage({ type: "error", text: "Payment receipt is required." })
+
+    const missingFields = []
+    if (!name) missingFields.push("Full Name")
+    if (!email) missingFields.push("Email")
+    if (!phone) missingFields.push("Phone Number")
+    if (!designation) missingFields.push("Designation")
+    if (!file) missingFields.push("Payment Receipt")
+
+    if (missingFields.length > 0) {
+      setMessage({
+        type: "error",
+        text: `Please fill in the following required fields: ${missingFields.join(
+          ", "
+        )}`,
+      })
       return
     }
+
     if (loading) return
     setLoading(true)
     setMessage(null)
