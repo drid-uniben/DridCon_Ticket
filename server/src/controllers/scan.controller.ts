@@ -46,7 +46,7 @@ class ScanController {
         throw new ConflictError('This ticket has already been used.', {
           attendeeName: attendee.name,
           checkedInBy: (attendee.checkedInBy as any)?.name,
-          checkedInAt: attendee.checkedInAt?.toLocaleString(),
+          checkedInAt: attendee.checkedInAt?.toISOString(),
         });
       }
 

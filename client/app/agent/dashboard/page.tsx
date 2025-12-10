@@ -286,7 +286,13 @@ export default function AgentDashboardPage() {
                   {lastResult.scannedBy && (
                     <p className="text-lg text-yellow-600 mt-2">
                       by {lastResult.scannedBy}
-                      {lastResult.checkedInAt && ` at ${lastResult.checkedInAt}`}
+                      {lastResult.checkedInAt &&
+                        ` at ${new Date(
+                          lastResult.checkedInAt
+                        ).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`}
                     </p>
                   )}
                 </>
@@ -333,7 +339,12 @@ export default function AgentDashboardPage() {
               >
                 <div>
                   <p className="font-medium">{scan.attendeeName}</p>
-                  <p className="text-xs text-zinc-500">{new Date(scan.scannedAt).toLocaleTimeString()}</p>
+                  <p className="text-xs text-zinc-500">
+                    {new Date(scan.scannedAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
                 </div>
 
                 <span
