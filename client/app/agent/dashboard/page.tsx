@@ -118,6 +118,7 @@ export default function AgentDashboardPage() {
       let status: "already_scanned" | "invalid" = "invalid"
       let scannedByAgent: string | undefined = undefined
       let checkedInAtTime: string | undefined = undefined
+      let attendeeName: string | undefined = undefined
 
       if (err.response && err.response.data) {
         const { message, details } = err.response.data;
