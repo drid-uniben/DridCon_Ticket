@@ -148,9 +148,9 @@ export default function FormPage() {
     <div className="min-h-screen bg-gradient-to-b from-purple-50 via-purple-100 to-white py-10 px-4">
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
         <header className="flex items-center gap-4">
-          <Logo size={80} />
+          <Logo size={80}/>
           <div>
-            <h1 className="text-3xl font-bold text-zinc-900">Research Conference and Innovation Fair.</h1>
+            <h1 className="text-xl md:text-3xl font-bold text-zinc-900">Research Conference and Innovation Fair.</h1>
             <p className="text-sm text-zinc-600">Positioning UNIBEN for National Development and Global Relevance</p>
           </div>
         </header>

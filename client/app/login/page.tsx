@@ -15,23 +15,37 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
-    try {
-      // Use the AuthContext login which handles API call and token storage
-      await login({ email, password })
-      
-      // After successful login, check the user from context
-      // The redirect will happen based on the user role
-      // Note: user state updates after login, so we fetch fresh from context
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Login failed. Check your credentials."
-      setError(errorMessage)
-    } finally {
-      setLoading(false)
+  e.preventDefault()
+  setError(null)
+  setLoading(true)
+
+  try {
+    await login({ email, password })
+  } catch (err: any) {
+    let message = "Login failed. Please check your email and password."
+
+    if (err?.response) {
+      if (err.response.status === 400 || err.response.status === 401) {
+        message = "Invalid email or password."
+      } 
+      else if (err.response.status === 404) {
+        message = "Account not found."
+      } 
+      else if (err.response.status >= 500) {
+        message = "Server error. Please try again later."
+      }
+    } 
+    
+    else if (err?.message?.includes("Network")) {
+      message = "Network error. Please check your connection."
     }
+
+    setError(message)
+  } finally {
+    setLoading(false)
   }
+}
+
 
   // Redirect when user is set after successful login
   React.useEffect(() => {
