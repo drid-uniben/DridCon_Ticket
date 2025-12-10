@@ -126,6 +126,7 @@ export default function AgentDashboardPage() {
         if (msg.includes("already") || msg.includes("used")) {
           status = "already_scanned"
           if (details) {
+            attendeeName = details.attendeeName
             scannedByAgent = details.checkedInBy
             checkedInAtTime = details.checkedInAt
           }
@@ -134,7 +135,7 @@ export default function AgentDashboardPage() {
 
       const result: ScanResult = {
         id: Date.now().toString(),
-        attendeeName: "N/A",
+        attendeeName: attendeeName || "N/A",
         email: "",
         ticketType: "",
         status,

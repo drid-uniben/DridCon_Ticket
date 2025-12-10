@@ -44,6 +44,7 @@ class ScanController {
           `Attempt to re-scan already checked-in attendee: ${attendee.email}`
         );
         throw new ConflictError('This ticket has already been used.', {
+          attendeeName: attendee.name,
           checkedInBy: (attendee.checkedInBy as any)?.name,
           checkedInAt: attendee.checkedInAt?.toLocaleString(),
         });

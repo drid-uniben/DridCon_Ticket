@@ -80,6 +80,7 @@ const errorHandler = (
       status: error.status,
       error: error,
       message: error.message,
+      details: (error as any).details,
       stack: error.stack,
     });
   } else if (process.env.NODE_ENV === 'production') {
@@ -87,6 +88,7 @@ const errorHandler = (
       res.status(error.statusCode).json({
         status: error.status,
         message: error.message,
+        details: (error as any).details,
       });
     } else {
       res.status(500).json({
@@ -94,6 +96,13 @@ const errorHandler = (
         message: 'Server Error!, Something went wrong!',
       });
     }
+  } else {
+    // Default response for other environments
+    res.status(error.statusCode).json({
+      status: error.status,
+      message: error.message,
+      details: (error as any).details,
+    });
   }
 };
 
