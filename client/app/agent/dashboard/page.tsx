@@ -56,7 +56,7 @@ export default function AgentDashboardPage() {
     const fetchScanHistory = async () => {
       try {
         const response = await scanApi.getScanHistory()
-        const { history, stats } = response.data.data
+        const { history, stats } = response.data
         
         const formattedHistory: ScanResult[] = history.map((item: any) => ({
           id: item._id,
