@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
 import { adminApi } from "@/lib/api"
-import Image from "next/image"
 
 type Attendee = {
   _id: string
@@ -28,6 +27,13 @@ type Agent = {
   createdAt: string
 }
 
+type DashboardDataType = {
+  totalAttendeesCount: number
+  checkedInAttendeesCount: number
+  totalAgentsCount: number
+  pendingApprovalsCount: number
+}
+
 type TabType = "pending" | "attendees" | "agents" | "manual" | "invite"
 
 export default function AdminDashboardPage() {
@@ -42,6 +48,14 @@ export default function AdminDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editedTicketType, setEditedTicketType] = useState<string>("")
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+
+  // Dashbord tab counts
+  const [dashboardData, setDashboardData] = useState<DashboardDataType>({
+    totalAttendeesCount: 0,
+    checkedInAttendeesCount: 0,
+    totalAgentsCount: 0,
+    pendingApprovalsCount: 0,
+  })
 
   useEffect(() => {
     if (selectedAttendee?.paymentProof) {
@@ -128,14 +142,27 @@ export default function AdminDashboardPage() {
     }
   }, [])
 
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await adminApi.getDashboardData()
+      setDashboardData(res.data || res || {})
+    } catch {
+      setMessage({ type: "error", text: "Failed to load dashboard data" })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   // Fetch data based on active tab
   useEffect(() => {
+    fetchDashboardData()
     if (activeTab === "pending" || activeTab === "attendees") {
       fetchAttendees()
     } else if (activeTab === "agents") {
       fetchAgents()
     }
-  }, [activeTab, fetchAttendees, fetchAgents])
+  }, [activeTab, fetchAttendees, fetchAgents, fetchDashboardData])
 
   async function approveAttendee(id: string, ticketType: string) {
     try {
@@ -234,9 +261,9 @@ export default function AdminDashboardPage() {
   const allAttendees = attendees
 
   const tabs = [
-    { id: "pending" as TabType, label: "Pending Approvals", count: pendingAttendees.length },
-    { id: "attendees" as TabType, label: "All Attendees", count: allAttendees.length },
-    { id: "agents" as TabType, label: "Agents", count: agents.length },
+    { id: "pending" as TabType, label: "Pending Approvals", count: dashboardData.pendingApprovalsCount },
+    { id: "attendees" as TabType, label: "All Attendees", count: dashboardData.totalAttendeesCount },
+    { id: "agents" as TabType, label: "Agents", count: dashboardData.totalAgentsCount },
     { id: "manual" as TabType, label: "Manual Register" },
     { id: "invite" as TabType, label: "Invite User" },
   ]

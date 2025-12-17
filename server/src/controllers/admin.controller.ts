@@ -291,17 +291,24 @@ class AdminController {
         );
       }
 
-      const totalAttendees = await User.countDocuments({ role: UserRole.USER });
-      const checkedInAttendees = await User.countDocuments({
+      const totalAttendeesCount = await User.countDocuments({ role: UserRole.USER });
+      const checkedInAttendeesCount = await User.countDocuments({
         role: UserRole.USER,
         checkInStatus: 'checked-in',
+      });
+      const totalAgentsCount = await User.countDocuments({ role: UserRole.AGENT });
+      const pendingApprovalsCount = await User.countDocuments({
+        role: UserRole.USER,
+        paymentStatus: PaymentStatus.PENDING,
       });
 
       res.status(200).json({
         success: true,
         data: {
-          totalAttendees,
-          checkedInAttendees,
+          totalAttendeesCount,
+          checkedInAttendeesCount,
+          totalAgentsCount,
+          pendingApprovalsCount,
         },
       });
     }
