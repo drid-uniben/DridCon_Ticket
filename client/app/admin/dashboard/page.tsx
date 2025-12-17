@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
 import { adminApi } from "@/lib/api"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 type Attendee = {
   _id: string
@@ -48,6 +49,16 @@ export default function AdminDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editedTicketType, setEditedTicketType] = useState<string>("")
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+
+  const [confirmState, setConfirmState] = useState<
+    | { open: false }
+    | {
+        open: true
+        action: "approve" | "decline"
+        attendee: Attendee
+      }
+  >({ open: false })
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Dashbord tab counts
   const [dashboardData, setDashboardData] = useState<DashboardDataType>({
@@ -186,6 +197,28 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleConfirmAction() {
+    if (!confirmState.open) return
+    setConfirmLoading(true)
+    try {
+      if (confirmState.action === "approve") {
+        // Use edited ticket type if the details modal is open for the same attendee
+        const ticketType =
+          isModalOpen && selectedAttendee?._id === confirmState.attendee._id ? editedTicketType : confirmState.attendee.ticketType
+        await approveAttendee(confirmState.attendee._id, ticketType)
+      } else {
+        await declineAttendee(confirmState.attendee._id)
+        // If admin declines from within the details modal, close it to avoid stale state.
+        if (isModalOpen && selectedAttendee?._id === confirmState.attendee._id) {
+          setIsModalOpen(false)
+        }
+      }
+      setConfirmState({ open: false })
+    } finally {
+      setConfirmLoading(false)
+    }
+  }
+
   async function handleManualRegister(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -270,6 +303,41 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
+      <ConfirmDialog
+        open={confirmState.open}
+        title={
+          confirmState.open
+            ? confirmState.action === "approve"
+              ? "Approve payment?"
+              : "Decline payment?"
+            : ""
+        }
+        description={
+          confirmState.open ? (
+            <div className="space-y-2">
+              <div>
+                You’re about to <span className="font-medium">{confirmState.action}</span> payment for:
+              </div>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+                <div className="font-medium text-zinc-900">{confirmState.attendee.name}</div>
+                <div className="text-zinc-600">{confirmState.attendee.email}</div>
+                <div className="text-zinc-600">Ticket: {confirmState.attendee.ticketType}</div>
+              </div>
+              {confirmState.action === "decline" ? (
+                <div className="text-sm text-zinc-600">This will mark the payment as declined.</div>
+              ) : (
+                <div className="text-sm text-zinc-600">This will approve the payment and send the QR code via email.</div>
+              )}
+            </div>
+          ) : null
+        }
+        confirmText={confirmState.open ? (confirmState.action === "approve" ? "Approve" : "Decline") : "Confirm"}
+        cancelText="Cancel"
+        variant={confirmState.open && confirmState.action === "decline" ? "danger" : "default"}
+        loading={confirmLoading}
+        onCancel={() => (confirmLoading ? null : setConfirmState({ open: false }))}
+        onConfirm={handleConfirmAction}
+      />
       {/* Header */}
       <header className="bg-white/80 backdrop-blur border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -285,7 +353,6 @@ export default function AdminDashboardPage() {
           </Button>
         </div>
       </header>
-
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Message */}
         {message && (
@@ -355,7 +422,11 @@ export default function AdminDashboardPage() {
                         >
                           View Details
                         </Button>
-                        <Button onClick={() => declineAttendee(attendee._id)} variant="outline" className="text-red-600 border-red-300 hover:bg-red-50">
+                        <Button
+                          onClick={() => setConfirmState({ open: true, action: "decline", attendee })}
+                          variant="outline"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
                           Decline
                         </Button>
                       </div>
@@ -408,7 +479,10 @@ export default function AdminDashboardPage() {
                     <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                       Close
                     </Button>
-                    <Button onClick={() => approveAttendee(selectedAttendee._id, editedTicketType)} className="bg-green-600 hover:bg-green-700">
+                    <Button
+                      onClick={() => setConfirmState({ open: true, action: "approve", attendee: selectedAttendee })}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
                       Approve
                     </Button>
                   </div>
