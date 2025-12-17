@@ -17,7 +17,7 @@ type Attendee = {
   designation: string
   paymentStatus: "pending" | "approved" | "declined"
   paymentProof?: string
-  checkedIn: boolean
+  checkInStatus: "checked-in" | "not-checked-in"
   createdAt: string
 }
 
@@ -530,7 +530,7 @@ export default function AdminDashboardPage() {
                               {a.paymentStatus}
                             </span>
                           </td>
-                          <td className="p-3 text-center">{a.checkedIn ? "✅" : "❌"}</td>
+                          <td className="p-3 text-center">{a.checkInStatus === "checked-in" ? "✅" : "❌"}</td>
                         </tr>
                       ))}
                     </tbody>
