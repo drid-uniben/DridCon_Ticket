@@ -49,6 +49,9 @@ export default function AdminDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editedTicketType, setEditedTicketType] = useState<string>("")
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [imageMimeType, setImageMimeType] = useState<string | null>(null)
 
   const [confirmState, setConfirmState] = useState<
     | { open: false }
@@ -72,17 +75,35 @@ export default function AdminDashboardPage() {
     if (selectedAttendee?.paymentProof) {
       let objectUrl: string
       const fetchImage = async () => {
+        setImageLoading(true)
+        setImageError(null)
+        setImageMimeType(null)
+        setImageSrc(null)
         try {
-          const response = await fetch(selectedAttendee.paymentProof!)
+          // Use a credentialed request by default; many receipts live behind auth cookies.
+          const response = await fetch(selectedAttendee.paymentProof!, {
+            credentials: "include",
+            headers: {
+              Accept: "image/*,application/pdf;q=0.9,*/*;q=0.8",
+            },
+          })
           if (!response.ok) {
-            throw new Error("Network response was not ok")
+            throw new Error(`Failed to load receipt (HTTP ${response.status})`)
           }
           const blob = await response.blob()
+
+          // Some receipts might be PDFs or other formats.
+          const mime = blob.type || null
+          setImageMimeType(mime)
+
           objectUrl = URL.createObjectURL(blob)
           setImageSrc(objectUrl)
         } catch (error) {
-          console.error("Failed to fetch image:", error)
-          setImageSrc(null) // Or a placeholder image
+          console.error("Failed to fetch receipt:", error)
+          setImageSrc(null)
+          setImageError(error instanceof Error ? error.message : "Failed to load receipt")
+        } finally {
+          setImageLoading(false)
         }
       }
 
@@ -94,6 +115,12 @@ export default function AdminDashboardPage() {
         }
       }
     }
+
+    // If no payment proof, clear any previous state.
+    setImageSrc(null)
+    setImageError(null)
+    setImageMimeType(null)
+    setImageLoading(false)
   }, [selectedAttendee])
 
   // Manual registration form
@@ -464,14 +491,60 @@ export default function AdminDashboardPage() {
                   {selectedAttendee.paymentProof && (
                     <div className="mt-4">
                       <p className="font-medium mb-2">Payment Receipt</p>
-                      {imageSrc ? (
-                        <img
-                          src={imageSrc}
-                          alt="Payment Receipt"
-                          className="w-full h-auto rounded-lg border"
-                        />
+                      {imageLoading ? (
+                        <p className="text-sm text-zinc-500">Loading receipt…</p>
+                      ) : imageError ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          <div className="font-medium mb-1">Couldn’t load receipt</div>
+                          <div className="text-red-700/90">{imageError}</div>
+                          <div className="mt-2">
+                            <a
+                              href={selectedAttendee.paymentProof}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline"
+                            >
+                              Open receipt in a new tab
+                            </a>
+                          </div>
+                        </div>
+                      ) : imageSrc ? (
+                        imageMimeType?.includes("pdf") ? (
+                          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+                            <p className="text-zinc-700">This receipt is a PDF.</p>
+                            <a
+                              href={imageSrc}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1 inline-block underline"
+                            >
+                              Open PDF
+                            </a>
+                          </div>
+                        ) : (
+                          // next/image doesn't support blob: URLs reliably + would require remotePatterns for API URLs.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imageSrc}
+                            alt="Payment Receipt"
+                            className="w-full h-auto rounded-lg border border-zinc-200 bg-white"
+                            loading="lazy"
+                          />
+                        )
                       ) : (
-                        <p>Loading image...</p>
+                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+                          No receipt preview available.
+                          <div className="mt-1">
+                            <a
+                              href={selectedAttendee.paymentProof}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline"
+                            >
+                              Open receipt
+                            </a>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
