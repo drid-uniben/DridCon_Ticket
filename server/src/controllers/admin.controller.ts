@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import asyncHandler from '../utils/asyncHandler';
 import logger from '../utils/logger';
-import User, { PaymentStatus, UserRole } from '../model/user.model';
+import User, { PaymentStatus, UserRole, CheckInStatus } from '../model/user.model';
 import {
   BadRequestError,
   NotFoundError,
@@ -111,6 +111,7 @@ class AdminController {
         qrCode: token,
         paymentStatus: PaymentStatus.CONFIRMED,
         role: UserRole.USER,
+        checkInStatus: CheckInStatus.NOT_CHECKED_IN,
       });
 
       const qrCodeUrl = `${process.env.API_URL}${filePath}`;

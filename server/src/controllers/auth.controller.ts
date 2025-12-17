@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import User, { UserRole, PaymentStatus } from '../model/user.model';
+import User, { UserRole, PaymentStatus, CheckInStatus } from '../model/user.model';
 import tokenService, { TokenPayload } from '../services/token.service'; // Import TokenPayload
 import { UnauthorizedError, BadRequestError } from '../utils/customErrors';
 import asyncHandler from '../utils/asyncHandler';
@@ -114,6 +114,7 @@ class AuthController {
       fileType: req.file ? req.file.mimetype : '',
       role: UserRole.USER,
       isActive: true,
+      checkInStatus: CheckInStatus.NOT_CHECKED_IN,
     });
 
     // Send registration confirmation email

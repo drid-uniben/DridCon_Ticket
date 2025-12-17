@@ -508,7 +508,7 @@ export default function AdminDashboardPage() {
                         <th className="text-left p-3">Email</th>
                         <th className="text-left p-3">Ticket</th>
                         <th className="text-left p-3">Status</th>
-                        <th className="text-left p-3">Checked In</th>
+                        <th className="text-center p-3">Checked In</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -530,7 +530,7 @@ export default function AdminDashboardPage() {
                               {a.paymentStatus}
                             </span>
                           </td>
-                          <td className="p-3">{a.checkedIn ? "✅ Yes" : "—"}</td>
+                          <td className="p-3 text-center">{a.checkedIn ? "✅" : "❌"}</td>
                         </tr>
                       ))}
                     </tbody>

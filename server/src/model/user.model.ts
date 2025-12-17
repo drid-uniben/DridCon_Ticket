@@ -32,6 +32,7 @@ export interface IUser extends Document {
   password?: string;
   role: UserRole;
   isActive: boolean;
+  ticketsent?: boolean;
   refreshToken?: string;
   inviteToken?: string;
   inviteTokenExpires?: Date;
