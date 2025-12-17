@@ -14,6 +14,7 @@ type Attendee = {
   phoneNumber?: string
   ticketType: string
   department?: string
+  designation: string
   paymentStatus: "pending" | "approved" | "declined"
   paymentProof?: string
   checkedIn: boolean
@@ -77,6 +78,7 @@ export default function AdminDashboardPage() {
     phoneNumber: "",
     ticketType: "Student Pass",
     department: "",
+    designation: "",
   })
 
   // Invite form
@@ -163,7 +165,7 @@ export default function AdminDashboardPage() {
     try {
       await adminApi.manualRegister(manualForm)
       setMessage({ type: "success", text: "Attendee registered! QR code sent via email." })
-      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "" })
+      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "", designation: "" })
       setActiveTab("attendees")
       fetchAttendees()
     } catch (err) {
@@ -347,6 +349,7 @@ export default function AdminDashboardPage() {
                   <p><strong>Name:</strong> {selectedAttendee.name}</p>
                   <p><strong>Email:</strong> {selectedAttendee.email}</p>
                   <p><strong>Phone:</strong> {selectedAttendee.phoneNumber}</p>
+                  <p><strong>Designation:</strong> {selectedAttendee.designation}</p>
                   <p><strong>Department:</strong> {selectedAttendee.department || "N/A"}</p>
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">Ticket Type</label>
@@ -509,6 +512,14 @@ export default function AdminDashboardPage() {
                   value={manualForm.phoneNumber}
                   onChange={(e) => setManualForm({ ...manualForm, phoneNumber: e.target.value })}
                   placeholder="Phone number"
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+                  required
+                />
+                <input
+                  type="text"
+                  value={manualForm.designation}
+                  onChange={(e) => setManualForm({ ...manualForm, designation: e.target.value })}
+                  placeholder="Designation (e.g. PhD Student, Lecturer)"
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                   required
                 />
