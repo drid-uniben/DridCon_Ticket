@@ -112,6 +112,7 @@ class AdminController {
         paymentStatus: PaymentStatus.CONFIRMED,
         role: UserRole.USER,
         checkInStatus: CheckInStatus.NOT_CHECKED_IN,
+        ticketsent: true,
       });
 
       const qrCodeUrl = `${process.env.API_URL}${filePath}`;
@@ -230,6 +231,10 @@ class AdminController {
         qrCodeUrl,
         attendee.ticketType
       );
+
+      // Update ticketsent to true
+      attendee.ticketsent = true;
+      await attendee.save();
 
       res.status(200).json({
         success: true,

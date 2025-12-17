@@ -115,6 +115,7 @@ class AuthController {
       role: UserRole.USER,
       isActive: true,
       checkInStatus: CheckInStatus.NOT_CHECKED_IN,
+      ticketsent: false,
     });
 
     // Send registration confirmation email
