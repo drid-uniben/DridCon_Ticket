@@ -120,7 +120,7 @@ export default function FormPage() {
         paymentProof: file || undefined,
       })
 
-      setMessage({ type: 'success', text: 'Registration submitted successfully! Check your email for a registration confirmation mail containing more information.' })
+      setMessage({ type: 'success', text: 'Registration submitted successfully! Check your email for a registration confirmation mail containing more information. If you don\'t receive a confirmation email then contact support at drid@uniben.edu' })
       setName("")
       setEmail("")
       setPhone("")
@@ -207,6 +207,9 @@ export default function FormPage() {
             </Button>
           </FormCard>
         </form>
+        <p className="text-center text-sm text-zinc-600 mt-8">
+          For further inquiry, contact support at <a href="mailto:drid@uniben.edu" className="text-purple-600 hover:underline">drid@uniben.edu</a>
+        </p>
       </div>
     </div>
   )

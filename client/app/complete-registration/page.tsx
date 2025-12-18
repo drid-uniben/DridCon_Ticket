@@ -95,7 +95,10 @@ function CompleteRegistrationContent() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-zinc-900">Registration Complete!</h1>
-          <p className="text-zinc-600">Your ticket with QR code has been sent to your email.</p>
+          <p className="text-zinc-600">
+            Your ticket with QR code has been sent to your email. If you don't receive a confirmation email then
+            contact support at <a href="mailto:drid@uniben.edu" className="text-purple-600 hover:underline">drid@uniben.edu</a>
+          </p>
           <Button onClick={() => router.push("/")} className="bg-gradient-to-r from-purple-600 to-indigo-600">
             Go to Registration page
           </Button>
@@ -189,6 +192,9 @@ function CompleteRegistrationContent() {
             {loading ? "Completing Registration…" : "Complete Registration"}
           </Button>
         </form>
+        <p className="text-center text-sm text-zinc-600">
+          For further inquiry, contact support at <a href="mailto:drid@uniben.edu" className="text-purple-600 hover:underline">drid@uniben.edu</a>
+        </p>
       </div>
     </div>
   )
