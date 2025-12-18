@@ -64,7 +64,7 @@ class TokenService {
       {
         ...payload,
         iat: now,
-        exp: now + 15 * 60, // 15 minutes
+        exp: now + (15 * 60), // 15 minutes
       },
       this.accessTokenSecret
     );
@@ -73,7 +73,7 @@ class TokenService {
       {
         ...payload,
         iat: now,
-        exp: now + 7 * 24 * 60 * 60, // 7 days
+        exp: now + (7 * 24 * 60 * 60), // 7 days
       },
       this.refreshTokenSecret
     );

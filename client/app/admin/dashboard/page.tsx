@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
 import { adminApi } from "@/lib/api"
-import Image from "next/image"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 type Attendee = {
   _id: string
@@ -14,9 +14,10 @@ type Attendee = {
   phoneNumber?: string
   ticketType: string
   department?: string
+  designation: string
   paymentStatus: "pending" | "approved" | "declined"
   paymentProof?: string
-  checkedIn: boolean
+  checkInStatus: "checked-in" | "not-checked-in"
   createdAt: string
 }
 
@@ -25,6 +26,13 @@ type Agent = {
   name: string
   email: string
   createdAt: string
+}
+
+type DashboardDataType = {
+  totalAttendeesCount: number
+  checkedInAttendeesCount: number
+  totalAgentsCount: number
+  pendingApprovalsCount: number
 }
 
 type TabType = "pending" | "attendees" | "agents" | "manual" | "invite"
@@ -41,22 +49,61 @@ export default function AdminDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editedTicketType, setEditedTicketType] = useState<string>("")
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [imageMimeType, setImageMimeType] = useState<string | null>(null)
+
+  const [confirmState, setConfirmState] = useState<
+    | { open: false }
+    | {
+        open: true
+        action: "approve" | "decline"
+        attendee: Attendee
+      }
+  >({ open: false })
+  const [confirmLoading, setConfirmLoading] = useState(false)
+
+  // Dashbord tab counts
+  const [dashboardData, setDashboardData] = useState<DashboardDataType>({
+    totalAttendeesCount: 0,
+    checkedInAttendeesCount: 0,
+    totalAgentsCount: 0,
+    pendingApprovalsCount: 0,
+  })
 
   useEffect(() => {
     if (selectedAttendee?.paymentProof) {
       let objectUrl: string
       const fetchImage = async () => {
+        setImageLoading(true)
+        setImageError(null)
+        setImageMimeType(null)
+        setImageSrc(null)
         try {
-          const response = await fetch(selectedAttendee.paymentProof!)
+          // Use a credentialed request by default; many receipts live behind auth cookies.
+          const response = await fetch(selectedAttendee.paymentProof!, {
+            credentials: "include",
+            headers: {
+              Accept: "image/*,application/pdf;q=0.9,*/*;q=0.8",
+            },
+          })
           if (!response.ok) {
-            throw new Error("Network response was not ok")
+            throw new Error(`Failed to load receipt (HTTP ${response.status})`)
           }
           const blob = await response.blob()
+
+          // Some receipts might be PDFs or other formats.
+          const mime = blob.type || null
+          setImageMimeType(mime)
+
           objectUrl = URL.createObjectURL(blob)
           setImageSrc(objectUrl)
         } catch (error) {
-          console.error("Failed to fetch image:", error)
-          setImageSrc(null) // Or a placeholder image
+          console.error("Failed to fetch receipt:", error)
+          setImageSrc(null)
+          setImageError(error instanceof Error ? error.message : "Failed to load receipt")
+        } finally {
+          setImageLoading(false)
         }
       }
 
@@ -68,6 +115,12 @@ export default function AdminDashboardPage() {
         }
       }
     }
+
+    // If no payment proof, clear any previous state.
+    setImageSrc(null)
+    setImageError(null)
+    setImageMimeType(null)
+    setImageLoading(false)
   }, [selectedAttendee])
 
   // Manual registration form
@@ -77,6 +130,7 @@ export default function AdminDashboardPage() {
     phoneNumber: "",
     ticketType: "Student Pass",
     department: "",
+    designation: "",
   })
 
   // Invite form
@@ -126,14 +180,27 @@ export default function AdminDashboardPage() {
     }
   }, [])
 
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await adminApi.getDashboardData()
+      setDashboardData(res.data || res || {})
+    } catch {
+      setMessage({ type: "error", text: "Failed to load dashboard data" })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   // Fetch data based on active tab
   useEffect(() => {
+    fetchDashboardData()
     if (activeTab === "pending" || activeTab === "attendees") {
       fetchAttendees()
     } else if (activeTab === "agents") {
       fetchAgents()
     }
-  }, [activeTab, fetchAttendees, fetchAgents])
+  }, [activeTab, fetchAttendees, fetchAgents, fetchDashboardData])
 
   async function approveAttendee(id: string, ticketType: string) {
     try {
@@ -157,13 +224,35 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleConfirmAction() {
+    if (!confirmState.open) return
+    setConfirmLoading(true)
+    try {
+      if (confirmState.action === "approve") {
+        // Use edited ticket type if the details modal is open for the same attendee
+        const ticketType =
+          isModalOpen && selectedAttendee?._id === confirmState.attendee._id ? editedTicketType : confirmState.attendee.ticketType
+        await approveAttendee(confirmState.attendee._id, ticketType)
+      } else {
+        await declineAttendee(confirmState.attendee._id)
+        // If admin declines from within the details modal, close it to avoid stale state.
+        if (isModalOpen && selectedAttendee?._id === confirmState.attendee._id) {
+          setIsModalOpen(false)
+        }
+      }
+      setConfirmState({ open: false })
+    } finally {
+      setConfirmLoading(false)
+    }
+  }
+
   async function handleManualRegister(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
       await adminApi.manualRegister(manualForm)
       setMessage({ type: "success", text: "Attendee registered! QR code sent via email." })
-      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "" })
+      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "", designation: "" })
       setActiveTab("attendees")
       fetchAttendees()
     } catch (err) {
@@ -232,15 +321,50 @@ export default function AdminDashboardPage() {
   const allAttendees = attendees
 
   const tabs = [
-    { id: "pending" as TabType, label: "Pending Approvals", count: pendingAttendees.length },
-    { id: "attendees" as TabType, label: "All Attendees", count: allAttendees.length },
-    { id: "agents" as TabType, label: "Agents", count: agents.length },
+    { id: "pending" as TabType, label: "Pending Approvals", count: dashboardData.pendingApprovalsCount },
+    { id: "attendees" as TabType, label: "All Attendees", count: dashboardData.totalAttendeesCount },
+    { id: "agents" as TabType, label: "Agents", count: dashboardData.totalAgentsCount },
     { id: "manual" as TabType, label: "Manual Register" },
     { id: "invite" as TabType, label: "Invite User" },
   ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
+      <ConfirmDialog
+        open={confirmState.open}
+        title={
+          confirmState.open
+            ? confirmState.action === "approve"
+              ? "Approve payment?"
+              : "Decline payment?"
+            : ""
+        }
+        description={
+          confirmState.open ? (
+            <div className="space-y-2">
+              <div>
+                You’re about to <span className="font-medium">{confirmState.action}</span> payment for:
+              </div>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+                <div className="font-medium text-zinc-900">{confirmState.attendee.name}</div>
+                <div className="text-zinc-600">{confirmState.attendee.email}</div>
+                <div className="text-zinc-600">Ticket: {confirmState.attendee.ticketType}</div>
+              </div>
+              {confirmState.action === "decline" ? (
+                <div className="text-sm text-zinc-600">This will mark the payment as declined.</div>
+              ) : (
+                <div className="text-sm text-zinc-600">This will approve the payment and send the QR code via email.</div>
+              )}
+            </div>
+          ) : null
+        }
+        confirmText={confirmState.open ? (confirmState.action === "approve" ? "Approve" : "Decline") : "Confirm"}
+        cancelText="Cancel"
+        variant={confirmState.open && confirmState.action === "decline" ? "danger" : "default"}
+        loading={confirmLoading}
+        onCancel={() => (confirmLoading ? null : setConfirmState({ open: false }))}
+        onConfirm={handleConfirmAction}
+      />
       {/* Header */}
       <header className="bg-white/80 backdrop-blur border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -256,7 +380,6 @@ export default function AdminDashboardPage() {
           </Button>
         </div>
       </header>
-
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Message */}
         {message && (
@@ -326,7 +449,11 @@ export default function AdminDashboardPage() {
                         >
                           View Details
                         </Button>
-                        <Button onClick={() => declineAttendee(attendee._id)} variant="outline" className="text-red-600 border-red-300 hover:bg-red-50">
+                        <Button
+                          onClick={() => setConfirmState({ open: true, action: "decline", attendee })}
+                          variant="outline"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
                           Decline
                         </Button>
                       </div>
@@ -347,6 +474,7 @@ export default function AdminDashboardPage() {
                   <p><strong>Name:</strong> {selectedAttendee.name}</p>
                   <p><strong>Email:</strong> {selectedAttendee.email}</p>
                   <p><strong>Phone:</strong> {selectedAttendee.phoneNumber}</p>
+                  <p><strong>Designation:</strong> {selectedAttendee.designation}</p>
                   <p><strong>Department:</strong> {selectedAttendee.department || "N/A"}</p>
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">Ticket Type</label>
@@ -363,14 +491,60 @@ export default function AdminDashboardPage() {
                   {selectedAttendee.paymentProof && (
                     <div className="mt-4">
                       <p className="font-medium mb-2">Payment Receipt</p>
-                      {imageSrc ? (
-                        <img
-                          src={imageSrc}
-                          alt="Payment Receipt"
-                          className="w-full h-auto rounded-lg border"
-                        />
+                      {imageLoading ? (
+                        <p className="text-sm text-zinc-500">Loading receipt…</p>
+                      ) : imageError ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          <div className="font-medium mb-1">Couldn’t load receipt</div>
+                          <div className="text-red-700/90">{imageError}</div>
+                          <div className="mt-2">
+                            <a
+                              href={selectedAttendee.paymentProof}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline"
+                            >
+                              Open receipt in a new tab
+                            </a>
+                          </div>
+                        </div>
+                      ) : imageSrc ? (
+                        imageMimeType?.includes("pdf") ? (
+                          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+                            <p className="text-zinc-700">This receipt is a PDF.</p>
+                            <a
+                              href={imageSrc}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1 inline-block underline"
+                            >
+                              Open PDF
+                            </a>
+                          </div>
+                        ) : (
+                          // next/image doesn't support blob: URLs reliably + would require remotePatterns for API URLs.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imageSrc}
+                            alt="Payment Receipt"
+                            className="w-full h-auto rounded-lg border border-zinc-200 bg-white"
+                            loading="lazy"
+                          />
+                        )
                       ) : (
-                        <p>Loading image...</p>
+                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+                          No receipt preview available.
+                          <div className="mt-1">
+                            <a
+                              href={selectedAttendee.paymentProof}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline"
+                            >
+                              Open receipt
+                            </a>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -378,7 +552,10 @@ export default function AdminDashboardPage() {
                     <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                       Close
                     </Button>
-                    <Button onClick={() => approveAttendee(selectedAttendee._id, editedTicketType)} className="bg-green-600 hover:bg-green-700">
+                    <Button
+                      onClick={() => setConfirmState({ open: true, action: "approve", attendee: selectedAttendee })}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
                       Approve
                     </Button>
                   </div>
@@ -404,7 +581,7 @@ export default function AdminDashboardPage() {
                         <th className="text-left p-3">Email</th>
                         <th className="text-left p-3">Ticket</th>
                         <th className="text-left p-3">Status</th>
-                        <th className="text-left p-3">Checked In</th>
+                        <th className="text-center p-3">Checked In</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -426,7 +603,7 @@ export default function AdminDashboardPage() {
                               {a.paymentStatus}
                             </span>
                           </td>
-                          <td className="p-3">{a.checkedIn ? "✅ Yes" : "—"}</td>
+                          <td className="p-3 text-center">{a.checkInStatus === "checked-in" ? "✅" : "❌"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -509,6 +686,14 @@ export default function AdminDashboardPage() {
                   value={manualForm.phoneNumber}
                   onChange={(e) => setManualForm({ ...manualForm, phoneNumber: e.target.value })}
                   placeholder="Phone number"
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+                  required
+                />
+                <input
+                  type="text"
+                  value={manualForm.designation}
+                  onChange={(e) => setManualForm({ ...manualForm, designation: e.target.value })}
+                  placeholder="Designation (e.g. PhD Student, Lecturer)"
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                   required
                 />

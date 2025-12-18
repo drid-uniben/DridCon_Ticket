@@ -208,7 +208,7 @@ export const adminApi = {
   approveRegistration: async (id: string, data: { ticketType: string }) => (await api.post(`/admin/attendees/${id}/approve`, data)).data,
   declineRegistration: async (id: string) => (await api.post(`/admin/attendees/${id}/decline`)).data,
   getAllAttendees: async () => (await api.get('/admin/attendees')).data,
-  getDashboard: async () => (await api.get('/admin/dashboard')).data,
+  getDashboardData: async () => (await api.get('/admin/dashboard')).data,
 }
 
 // Scan API
