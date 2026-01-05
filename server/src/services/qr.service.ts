@@ -13,19 +13,34 @@ if (!QR_CODE_SECRET) {
 }
 
 export const generateQRCode = async (
-  payload: Record<string, any>
+  payload: Record<string, any>,
+  sessionType?: 'pre-conference' | 'main-conference'
 ): Promise<{ token: string; filePath: string }> => {
   try {
-    const token = tokenService.generateToken(payload, QR_CODE_SECRET, '365d');
+    // Include session type in the token payload
+    const tokenPayload = {
+      ...payload,
+      sessionType: sessionType || 'main-conference',
+    };
+
+    const token = tokenService.generateToken(
+      tokenPayload,
+      QR_CODE_SECRET,
+      '365d'
+    );
     const qrCodeDirectory = path.join(__dirname, '..', 'uploads', 'qrcodes');
-    
+
     // Ensure the directory exists
     if (!fs.existsSync(qrCodeDirectory)) {
       fs.mkdirSync(qrCodeDirectory, { recursive: true });
     }
 
-    const filePath = path.join(qrCodeDirectory, `${payload.email}-${Date.now()}.png`);
-    
+    const sessionSuffix = sessionType ? `-${sessionType}` : '';
+    const filePath = path.join(
+      qrCodeDirectory,
+      `${payload.email}-${Date.now()}${sessionSuffix}.png`
+    );
+
     await QRCode.toFile(filePath, token);
 
     const fileUrl = `/uploads/qrcodes/${path.basename(filePath)}`;

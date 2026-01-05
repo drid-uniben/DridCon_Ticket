@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
-import User, { UserRole, PaymentStatus, CheckInStatus } from '../model/user.model';
+import User, {
+  UserRole,
+  PaymentStatus,
+  CheckInStatus,
+} from '../model/user.model';
 import tokenService, { TokenPayload } from '../services/token.service'; // Import TokenPayload
 import { UnauthorizedError, BadRequestError } from '../utils/customErrors';
 import asyncHandler from '../utils/asyncHandler';
@@ -77,84 +81,94 @@ class AuthController {
     res.json(response);
   });
 
-  register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { name, email, phoneNumber, ticketType, designation, department } =
-      req.body;
+  register = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { name, email, phoneNumber, ticketType, designation, department } =
+        req.body;
 
-    if (!req.file) {
-      throw new BadRequestError('Payment receipt is required.');
-    }
+      if (!req.file) {
+        throw new BadRequestError('Payment receipt is required.');
+      }
 
-    // Handle file upload - multer stores the file info in req.file
-    const paymentProof = req.file ? `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${req.file.filename}` : '';
+      // Handle file upload - multer stores the file info in req.file
+      const paymentProof = req.file
+        ? `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${req.file.filename}`
+        : '';
 
-    if (!name || !email || !phoneNumber || !ticketType) {
-      throw new BadRequestError(
-        'Name, email, phone number, and ticket type are required.'
+      if (!name || !email || !phoneNumber || !ticketType) {
+        throw new BadRequestError(
+          'Name, email, phone number, and ticket type are required.'
+        );
+      }
+
+      // Check if user already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw new BadRequestError('Email already registered.');
+      }
+
+      // Create new user (no password for attendees)
+      const user = await User.create({
+        name,
+        email,
+        phoneNumber,
+        ticketType,
+        designation,
+        department,
+        paymentProof,
+        originalFilename: req.file ? req.file.originalname : '',
+        fileSize: req.file ? req.file.size : 0,
+        fileType: req.file ? req.file.mimetype : '',
+        role: UserRole.USER,
+        isActive: true,
+        checkInStatus: CheckInStatus.NOT_CHECKED_IN,
+        ticketsent: false,
+      });
+
+      // Send registration confirmation email
+      await emailService.sendRegistrationConfirmation(
+        user.email,
+        user.name,
+        user.ticketType
       );
-    }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new BadRequestError('Email already registered.');
-    }
-
-    // Create new user (no password for attendees)
-    const user = await User.create({
-      name,
-      email,
-      phoneNumber,
-      ticketType,
-      designation,
-      department,
-      paymentProof,
-      originalFilename: req.file ? req.file.originalname : '',
-      fileSize: req.file ? req.file.size : 0,
-      fileType: req.file ? req.file.mimetype : '',
-      role: UserRole.USER,
-      isActive: true,
-      checkInStatus: CheckInStatus.NOT_CHECKED_IN,
-      ticketsent: false,
-    });
-
-    // Send registration confirmation email
-    await emailService.sendRegistrationConfirmation(user.email, user.name);
-
-    // Generate tokens
-    const tokens = tokenService.generateTokens({
-      userId: String(user._id),
-      email: user.email,
-      role: user.role,
-    });
-
-    // Save refresh token
-    user.refreshToken = tokens.refreshToken;
-    await user.save();
-
-    // Set cookie
-    tokenService.setRefreshTokenCookie(res, tokens.refreshToken);
-
-    const response: IAuthResponse = {
-      success: true,
-      accessToken: tokens.accessToken,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
+      // Generate tokens
+      const tokens = tokenService.generateTokens({
+        userId: String(user._id),
         email: user.email,
         role: user.role,
-      },
-    };
+      });
 
-    res.status(201).json(response);
-  });
+      // Save refresh token
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
+      // Set cookie
+      tokenService.setRefreshTokenCookie(res, tokens.refreshToken);
+
+      const response: IAuthResponse = {
+        success: true,
+        accessToken: tokens.accessToken,
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      };
+
+      res.status(201).json(response);
+    }
+  );
 
   createAgent = asyncHandler(
     async (req: AuthenticatedRequest, res: Response): Promise<void> => {
       const { name, email } = req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
-        throw new UnauthorizedError('You are not authorized to perform this action');
+        throw new UnauthorizedError(
+          'You are not authorized to perform this action'
+        );
       }
 
       if (!name || !email) {
@@ -282,73 +296,90 @@ class AuthController {
     }
   );
 
-  verifyInvite = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { token } = req.query;
+  verifyInvite = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { token } = req.query;
 
-    if (!token) {
-      throw new BadRequestError('Invite token is required.');
+      if (!token) {
+        throw new BadRequestError('Invite token is required.');
+      }
+
+      const user = await User.findOne({
+        inviteToken: token as string,
+        inviteTokenExpires: { $gt: new Date() },
+      });
+
+      if (!user) {
+        throw new BadRequestError('Invalid or expired invite token.');
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          email: user.email,
+          name: user.name,
+          phoneNumber: user.phoneNumber,
+          ticketType: user.ticketType,
+          designation: user.designation,
+          department: user.department,
+        },
+      });
     }
+  );
 
-    const user = await User.findOne({ inviteToken: token as string, inviteTokenExpires: { $gt: new Date() } });
+  completeRegistration = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { inviteToken, name, phoneNumber, designation, department } =
+        req.body;
 
-    if (!user) {
-      throw new BadRequestError('Invalid or expired invite token.');
+      if (!inviteToken || !name || !phoneNumber) {
+        throw new BadRequestError(
+          'Invite token, name and phone number are required.'
+        );
+      }
+
+      const user = await User.findOne({
+        inviteToken,
+        inviteTokenExpires: { $gt: new Date() },
+      });
+
+      if (!user) {
+        throw new BadRequestError('Invalid or expired invite token.');
+      }
+
+      const { token, filePath } = await generateQRCode({ email: user.email });
+
+      user.name = name;
+      user.phoneNumber = phoneNumber;
+
+      user.designation = designation;
+      user.department = department;
+      user.qrCode = token;
+      user.paymentStatus = PaymentStatus.CONFIRMED;
+      user.inviteToken = undefined;
+      user.inviteTokenExpires = undefined;
+      user.isActive = true;
+
+      await user.save();
+
+      if (!user.ticketType) {
+        throw new BadRequestError('User does not have a ticket type.');
+      }
+
+      const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+      await emailService.sendTicketWithQR(
+        user.email,
+        user.name,
+        qrCodeUrl,
+        user.ticketType
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Registration completed successfully.',
+      });
     }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        email: user.email,
-        name: user.name,
-        phoneNumber: user.phoneNumber,
-        ticketType: user.ticketType,
-        designation: user.designation,
-        department: user.department,
-      },
-    });
-  });
-
-
-  completeRegistration = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { inviteToken, name, phoneNumber, designation, department } = req.body;
-
-    if (!inviteToken || !name || !phoneNumber) {
-      throw new BadRequestError('Invite token, name and phone number are required.');
-    }
-
-    const user = await User.findOne({ inviteToken, inviteTokenExpires: { $gt: new Date() } });
-
-    if (!user) {
-      throw new BadRequestError('Invalid or expired invite token.');
-    }
-
-    const { token, filePath } = await generateQRCode({ email: user.email });
-
-    user.name = name;
-    user.phoneNumber = phoneNumber;
-    
-    user.designation = designation;
-    user.department = department;
-    user.qrCode = token;
-    user.paymentStatus = PaymentStatus.CONFIRMED;
-    user.inviteToken = undefined;
-    user.inviteTokenExpires = undefined;
-    user.isActive = true;
-
-    await user.save();
-
-    if (!user.ticketType) {
-      throw new BadRequestError('User does not have a ticket type.');
-    }
-
-    const qrCodeUrl = `${process.env.API_URL}${filePath}`;
-    await emailService.sendTicketWithQR(user.email, user.name, qrCodeUrl, user.ticketType);
-
-    res.status(200).json({
-      success: true,
-      message: 'Registration completed successfully.'
-    });
-  });
+  );
 }
 
 export default new AuthController();

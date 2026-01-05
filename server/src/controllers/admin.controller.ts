@@ -1,7 +1,12 @@
 import { Response } from 'express';
 import asyncHandler from '../utils/asyncHandler';
 import logger from '../utils/logger';
-import User, { PaymentStatus, UserRole, CheckInStatus } from '../model/user.model';
+import User, {
+  PaymentStatus,
+  UserRole,
+  CheckInStatus,
+  TicketType,
+} from '../model/user.model';
 import {
   BadRequestError,
   NotFoundError,
@@ -191,7 +196,7 @@ class AdminController {
   approveRegistration = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
       const { attendeeId } = req.params;
-      const { ticketType } = req.body;
+      const { ticketType, sessionType } = req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError(
@@ -212,35 +217,101 @@ class AdminController {
         attendee.ticketType = ticketType;
       }
 
-      const { token, filePath } = await generateQRCode({
-        email: attendee.email,
-      });
+      const isLecturerPremium =
+        attendee.ticketType === TicketType.LECTURER_PREMIUM;
 
-      attendee.paymentStatus = PaymentStatus.CONFIRMED;
-      attendee.qrCode = token;
-      await attendee.save();
+      // Handle Lecturer Premium approval
+      if (isLecturerPremium) {
+        if (sessionType === 'pre-conference') {
+          // Generate pre-conference QR
+          const { token, filePath } = await generateQRCode(
+            { email: attendee.email },
+            'pre-conference'
+          );
 
-      if (!attendee.ticketType) {
-        throw new BadRequestError('Attendee does not have a ticket type.');
+          attendee.preConferenceQrCode = token;
+          await attendee.save();
+
+          const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+          if (attendee.ticketType !== undefined) {
+            await emailService.sendPreConferenceTicket(
+              attendee.email,
+              attendee.name,
+              qrCodeUrl,
+              attendee.ticketType
+            );
+          }
+
+          res.status(200).json({
+            success: true,
+            message: 'Pre-conference ticket approved and sent.',
+            data: attendee,
+          });
+        } else if (sessionType === 'main-conference') {
+          // Generate main conference QR
+          const { token, filePath } = await generateQRCode(
+            { email: attendee.email },
+            'main-conference'
+          );
+
+          attendee.mainConferenceQrCode = token;
+          attendee.paymentStatus = PaymentStatus.CONFIRMED; // Mark as fully approved
+          await attendee.save();
+
+          const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+          if (attendee.ticketType !== undefined) {
+            await emailService.sendTicketWithQR(
+              attendee.email,
+              attendee.name,
+              qrCodeUrl,
+              attendee.ticketType
+            );
+          }
+
+          attendee.ticketsent = true;
+          await attendee.save();
+
+          res.status(200).json({
+            success: true,
+            message: 'Main conference ticket approved and sent.',
+            data: attendee,
+          });
+        } else {
+          throw new BadRequestError(
+            'Session type must be specified for Lecturer Premium tickets.'
+          );
+        }
+      } else {
+        // Original logic for other ticket types
+        const { token, filePath } = await generateQRCode({
+          email: attendee.email,
+        });
+
+        attendee.paymentStatus = PaymentStatus.CONFIRMED;
+        attendee.qrCode = token;
+        await attendee.save();
+
+        if (!attendee.ticketType) {
+          throw new BadRequestError('Attendee does not have a ticket type.');
+        }
+
+        const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+        await emailService.sendTicketWithQR(
+          attendee.email,
+          attendee.name,
+          qrCodeUrl,
+          attendee.ticketType
+        );
+
+        attendee.ticketsent = true;
+        await attendee.save();
+
+        res.status(200).json({
+          success: true,
+          message: 'Registration approved successfully.',
+          data: attendee,
+        });
       }
-
-      const qrCodeUrl = `${process.env.API_URL}${filePath}`;
-      await emailService.sendTicketWithQR(
-        attendee.email,
-        attendee.name,
-        qrCodeUrl,
-        attendee.ticketType
-      );
-
-      // Update ticketsent to true
-      attendee.ticketsent = true;
-      await attendee.save();
-
-      res.status(200).json({
-        success: true,
-        message: 'Registration approved successfully.',
-        data: attendee,
-      });
     }
   );
 
@@ -297,12 +368,16 @@ class AdminController {
         );
       }
 
-      const totalAttendeesCount = await User.countDocuments({ role: UserRole.USER });
+      const totalAttendeesCount = await User.countDocuments({
+        role: UserRole.USER,
+      });
       const checkedInAttendeesCount = await User.countDocuments({
         role: UserRole.USER,
         checkInStatus: 'checked-in',
       });
-      const totalAgentsCount = await User.countDocuments({ role: UserRole.AGENT });
+      const totalAgentsCount = await User.countDocuments({
+        role: UserRole.AGENT,
+      });
       const pendingApprovalsCount = await User.countDocuments({
         role: UserRole.USER,
         paymentStatus: PaymentStatus.PENDING,
