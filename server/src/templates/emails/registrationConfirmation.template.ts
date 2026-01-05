@@ -7,7 +7,10 @@ import {
   responsiveStyles,
 } from './styles';
 
-export const registrationConfirmationTemplate = (name: string): string => {
+export const registrationConfirmationTemplate = (
+  name: string,
+  ticketType?: string
+): string => {
   const eventDetailsStyle = `
     background: #f3f4f6;
     padding: 20px;
@@ -22,6 +25,8 @@ export const registrationConfirmationTemplate = (name: string): string => {
     text-align: center;
   `;
 
+  const isLecturerPremium = ticketType === 'Lecturer Premium';
+
   return `
     ${responsiveStyles}
     <div class="email-container" style="${containerStyles}">
@@ -29,11 +34,47 @@ export const registrationConfirmationTemplate = (name: string): string => {
         <h1 style="${headerStyles}">DridCon 2026 Registration</h1>
         <p style="${paragraphStyles}">Hi ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon! Your registration was successful.</p>
-        <p style="${paragraphStyles}">You will receive your ticket details, including your QR code for entry by mail, as soon as your payment is confirmed by our team.</p>
+        
+        ${
+          isLecturerPremium
+            ? `
+          <p style="${paragraphStyles}">
+            <strong>Lecturer Premium Ticket Benefits:</strong> You will receive <strong>TWO separate tickets</strong> with unique QR codes:
+          </p>
+          <div style="${eventDetailsStyle}">
+            <p style="margin: 0 0 15px 0;">
+              <strong>1. Pre-Conference Session Ticket (January 20, 2026)</strong><br/>
+              Access to exclusive pre-conference workshops and networking
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong>2. Main Conference Ticket (January 21, 2026)</strong><br/>
+              Full access to the main conference and innovation fair
+            </p>
+          </div>
+          <p style="${paragraphStyles}">
+            Both tickets will be sent to your email separately once your payment is confirmed by our team.
+          </p>
+        `
+            : `
+          <p style="${paragraphStyles}">
+            You will receive your ticket details, including your QR code for entry, as soon as your payment is confirmed by our team.
+          </p>
+        `
+        }
         
         <div style="${eventDetailsStyle}">
-          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research Conference and Innovation Fair.</p>
-          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, University of Benin.</p>
+          <p style="margin: 0 0 10px 0;"><strong>Event:</strong> Research Conference and Innovation Fair</p>
+          ${
+            isLecturerPremium
+              ? `
+            <p style="margin: 0 0 10px 0;"><strong>Pre-Conference:</strong> January 20, 2026</p>
+            <p style="margin: 0 0 10px 0;"><strong>Main Conference:</strong> January 21, 2026</p>
+          `
+              : `
+            <p style="margin: 0 0 10px 0;"><strong>Date:</strong> January 21, 2026</p>
+          `
+          }
+          <p style="margin: 0 0 10px 0;"><strong>Venue:</strong> Akin Deko Auditorium, University of Benin</p>
           <p style="margin: 0;">Get ready for an immersive experience with insightful talks, hands-on workshops, and networking opportunities with leading experts in the field.</p>
         </div>
 

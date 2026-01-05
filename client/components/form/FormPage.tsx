@@ -64,6 +64,16 @@ export default function FormPage() {
       ],
     },
     {
+      heading: "Lecturer Premium (₦6,000 – Early Bird) Lecturers ONLY",
+      items: [
+        "All Researcher Premium benefits",
+        "Access to BOTH Pre-Conference Session (January 20) for Lecturers AND Main Conference (January 21)",
+        "Two separate tickets with unique QR codes for each session",
+        "VIP seating at both events",
+        "Comprehensive conference package with all materials",
+      ],
+    },
+    {
       heading: "Payment Details",
       items: [
         "Bank Name: UNIBEN MFB",
@@ -145,7 +155,7 @@ export default function FormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-purple-100 to-white py-10 px-4">
+    <div className="min-h-screen bg-linear-to-b from-purple-50 via-purple-100 to-white py-10 px-4">
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
         <header className="flex items-center gap-4">
           <Logo size={80}/>
@@ -179,6 +189,7 @@ export default function FormPage() {
                 { label: "Student Pass (₦1,000)", value: "Student Pass" },
                 { label: "Researcher Standard (₦3,000)", value: "Researcher Standard" },
                 { label: "Researcher Premium (₦6,000)", value: "Researcher Premium" },
+                { label: "Lecturer Premium (₦6,000)", value: "Lecturer Premium" },
               ]}
             />
           </FormCard>

@@ -12,6 +12,7 @@ export enum TicketType {
   STUDENT = 'Student Pass',
   RESEARCHER_STANDARD = 'Researcher Standard',
   RESEARCHER_PREMIUM = 'Researcher Premium',
+  LECTURER_PREMIUM = 'Lecturer Premium',
 }
 
 export enum PaymentStatus {
@@ -51,6 +52,14 @@ export interface IUser extends Document {
   checkInStatus: CheckInStatus;
   checkedInAt?: Date;
   checkedInBy?: Schema.Types.ObjectId;
+  preConferenceQrCode?: string;
+  mainConferenceQrCode?: string;
+  preConferenceCheckInStatus?: CheckInStatus;
+  preConferenceCheckedInAt?: Date;
+  preConferenceCheckedInBy?: Schema.Types.ObjectId;
+  mainConferenceCheckInStatus?: CheckInStatus;
+  mainConferenceCheckedInAt?: Date;
+  mainConferenceCheckedInBy?: Schema.Types.ObjectId;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -111,6 +120,30 @@ const UserSchema: Schema<IUser> = new Schema(
       type: String,
       enum: Object.values(TicketType),
     },
+    preConferenceQrCode: { type: String },
+    preConferenceCheckInStatus: {
+      type: String,
+      enum: Object.values(CheckInStatus),
+      default: CheckInStatus.NOT_CHECKED_IN,
+    },
+    preConferenceCheckedInAt: { type: Date },
+    preConferenceCheckedInBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+
+    mainConferenceQrCode: { type: String },
+    mainConferenceCheckInStatus: {
+      type: String,
+      enum: Object.values(CheckInStatus),
+      default: CheckInStatus.NOT_CHECKED_IN,
+    },
+    mainConferenceCheckedInAt: { type: Date },
+    mainConferenceCheckedInBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+
     designation: {
       type: String,
       trim: true,
