@@ -183,6 +183,42 @@ class ScanController {
       }
     }
   );
+
+  getAgentScanHistory = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const agent = req.user;
+
+      if (agent?.role !== UserRole.AGENT) {
+        throw new ForbiddenError('Only agents can view their scan history.');
+      }
+
+      const history = await User.find({
+        checkedInBy: agent._id as any,
+        checkInStatus: CheckInStatus.CHECKED_IN,
+      })
+        .select(
+          '_id name email ticketType checkedInAt checkInStatus checkedInBy'
+        )
+        .populate('checkedInBy', 'name')
+        .sort({ checkedInAt: -1 });
+
+      const totalScans = history.length;
+      const successfulCheckIns = history.filter(
+        (item) => item.checkInStatus === CheckInStatus.CHECKED_IN
+      ).length;
+
+      res.status(200).json({
+        success: true,
+        data: {
+          history,
+          stats: {
+            totalScans,
+            successfulCheckIns,
+          },
+        },
+      });
+    }
+  );
 }
 
 export default new ScanController();
