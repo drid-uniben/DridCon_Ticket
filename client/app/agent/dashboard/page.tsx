@@ -20,6 +20,7 @@ type ScanResult = {
   scannedAt: string
   scannedBy?: string
   checkedInAt?: string
+  sessionType?: string
 }
 
 export default function AgentDashboardPage() {
@@ -338,14 +339,17 @@ export default function AgentDashboardPage() {
                 }`}
               >
                 <div>
-                  <p className="font-medium">{scan.attendeeName}</p>
-                  <p className="text-xs text-zinc-500">
-                    {new Date(scan.scannedAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
+      <p className="font-medium">{scan.attendeeName}</p>
+      {scan.sessionType && (
+        <p className="text-xs text-zinc-600">{scan.sessionType}</p>
+      )}
+      <p className="text-xs text-zinc-500">
+        {new Date(scan.scannedAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </p>
+    </div>
 
                 <span
                   className={`px-2 py-1 rounded-full text-xs ${
