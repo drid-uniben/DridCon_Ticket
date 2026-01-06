@@ -112,6 +112,7 @@ export default function AgentDashboardPage() {
         ticketType: data?.ticketType || "",
         status: "success",
         scannedAt: new Date().toISOString(),
+        sessionType: data?.sessionType || "",
       }
 
       setLastResult(result)
