@@ -333,7 +333,11 @@ class AdminController {
       attendee.paymentStatus = PaymentStatus.DECLINED;
       await attendee.save();
 
-      // Optional: Send an email to the user about the decline.
+      // Send an email to the user about the decline.
+      await emailService.sendDeclineRegistrationEmail(
+        attendee.email,
+        attendee.name
+      );
 
       res.status(200).json({
         success: true,
