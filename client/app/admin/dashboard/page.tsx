@@ -472,13 +472,15 @@ export default function AdminDashboardPage() {
                         >
                           View Details
                         </Button>
-                        <Button
-                          onClick={() => setConfirmState({ open: true, action: "decline", attendee })}
-                          variant="outline"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          Decline
-                        </Button>
+                        {!(attendee.ticketType === 'Lecturer Premium' && (attendee.preConferenceQrCode || attendee.mainConferenceQrCode)) && (
+                          <Button
+                            onClick={() => setConfirmState({ open: true, action: "decline", attendee })}
+                            variant="outline"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            Decline
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
