@@ -509,6 +509,7 @@ export default function AdminDashboardPage() {
                       <option value="Student Pass">Student Pass (₦1,000)</option>
                       <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
                       <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+                      <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
                     </select>
                   </div>
                   {selectedAttendee.paymentProof && (
@@ -778,6 +779,7 @@ export default function AdminDashboardPage() {
                   <option value="Student Pass">Student Pass (₦1,000)</option>
                   <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
                   <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+                  <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
                 </select>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Registering..." : "Register Attendee"}
@@ -836,6 +838,7 @@ export default function AdminDashboardPage() {
                   <option value="Student Pass">Student Pass (₦1,000)</option>
                   <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
                   <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+                  <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
                 </select>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Sending..." : "Send Invitation"}

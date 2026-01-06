@@ -7,6 +7,7 @@ import {
   ticketTemplate,
   registrationConfirmationTemplate,
   preConferenceTicketTemplate,
+  declineRegistrationTemplate,
 } from '../templates/emails';
 
 validateEnv();
@@ -149,6 +150,27 @@ class EmailService {
     } catch (error) {
       logger.error(
         'Failed to send pre-conference ticket:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  async sendDeclineRegistrationEmail(
+    email: string,
+    name: string
+  ): Promise<void> {
+    try {
+      await this.transporter.sendMail({
+        from: this.emailFrom,
+        to: email,
+        subject: 'DridCon 2026 Registration Update',
+        html: declineRegistrationTemplate(name),
+      });
+      logger.info(`Registration decline email sent to: ${email}`);
+    } catch (error) {
+      logger.error(
+        'Failed to send registration decline email:',
         error instanceof Error ? error.message : 'Unknown error'
       );
       throw error;
