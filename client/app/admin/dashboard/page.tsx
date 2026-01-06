@@ -18,6 +18,10 @@ type Attendee = {
   paymentStatus: "pending" | "approved" | "declined"
   paymentProof?: string
   checkInStatus: "checked-in" | "not-checked-in"
+  preConferenceQrCode?: string
+  mainConferenceQrCode?: string
+  preConferenceCheckInStatus?: "checked-in" | "not-checked-in"
+  mainConferenceCheckInStatus?: "checked-in" | "not-checked-in"
   createdAt: string
 }
 
@@ -52,6 +56,7 @@ export default function AdminDashboardPage() {
   const [imageLoading, setImageLoading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const [imageMimeType, setImageMimeType] = useState<string | null>(null)
+  const [filter, setFilter] = useState('all')
 
   const [confirmState, setConfirmState] = useState<
     | { open: false }
@@ -59,6 +64,7 @@ export default function AdminDashboardPage() {
         open: true
         action: "approve" | "decline"
         attendee: Attendee
+        sessionType?: 'pre-conference' | 'main-conference'
       }
   >({ open: false })
   const [confirmLoading, setConfirmLoading] = useState(false)
@@ -202,9 +208,9 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, fetchAttendees, fetchAgents, fetchDashboardData])
 
-  async function approveAttendee(id: string, ticketType: string) {
+  async function approveAttendee(id: string, ticketType: string, sessionType?: 'pre-conference' | 'main-conference') {
     try {
-      await adminApi.approveRegistration(id, { ticketType })
+      await adminApi.approveRegistration(id, { ticketType, sessionType })
       setMessage({ type: "success", text: "Attendee approved! QR code sent via email." })
       fetchAttendees()
       setIsModalOpen(false)
@@ -232,7 +238,9 @@ export default function AdminDashboardPage() {
         // Use edited ticket type if the details modal is open for the same attendee
         const ticketType =
           isModalOpen && selectedAttendee?._id === confirmState.attendee._id ? editedTicketType : confirmState.attendee.ticketType
-        await approveAttendee(confirmState.attendee._id, ticketType)
+
+
+        await approveAttendee(confirmState.attendee._id, ticketType, confirmState.sessionType)
       } else {
         await declineAttendee(confirmState.attendee._id)
         // If admin declines from within the details modal, close it to avoid stale state.
@@ -329,7 +337,7 @@ export default function AdminDashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
+    <div className="min-h-screen bg-linear-to-br from-purple-50 via-indigo-50 to-white">
       <ConfirmDialog
         open={confirmState.open}
         title={
@@ -405,7 +413,7 @@ export default function AdminDashboardPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === tab.id
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow"
+                  ? "bg-linear-to-r from-purple-600 to-indigo-600 text-white shadow"
                   : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
               }`}
             >
@@ -429,7 +437,22 @@ export default function AdminDashboardPage() {
                 <p className="text-zinc-500">No pending approvals</p>
               ) : (
                 <div className="space-y-4">
-                  {pendingAttendees.map((attendee) => (
+                  <div className="flex gap-2 mb-4">
+  <Button
+    variant={filter === 'all' ? 'default' : 'outline'}
+    onClick={() => setFilter('all')}
+  >
+    All ({pendingAttendees.length})
+  </Button>
+  <Button
+    variant={filter === 'lecturer' ? 'default' : 'outline'}
+    onClick={() => setFilter('lecturer')}
+  >
+    Lecturer Premium ({pendingAttendees.filter(a => a.ticketType === 'Lecturer Premium').length})
+  </Button>
+</div>
+
+{(filter === 'all' ? pendingAttendees : pendingAttendees.filter(a => a.ticketType === 'Lecturer Premium')).map((attendee) => (
                     <div key={attendee._id} className="border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
                         <p className="font-medium text-zinc-900">{attendee.name}</p>
@@ -549,15 +572,47 @@ export default function AdminDashboardPage() {
                     </div>
                   )}
                   <div className="flex gap-2 justify-end pt-4 sticky bottom-0 bg-white z-10 py-2">
-                    <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                      Close
-                    </Button>
-                    <Button
-                      onClick={() => setConfirmState({ open: true, action: "approve", attendee: selectedAttendee })}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Approve
-                    </Button>
+        <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+          Close
+        </Button>
+        
+        {selectedAttendee.ticketType === 'Lecturer Premium' ? (
+          <>
+            {!selectedAttendee.preConferenceQrCode && (
+              <Button
+                onClick={() => setConfirmState({ 
+                  open: true, 
+                  action: 'approve', 
+                  attendee: selectedAttendee,
+                  sessionType: 'pre-conference' 
+                })}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Approve Pre-Conference
+              </Button>
+            )}
+            {!selectedAttendee.mainConferenceQrCode && (
+              <Button
+                onClick={() => setConfirmState({ 
+                  open: true, 
+                  action: 'approve', 
+                  attendee: selectedAttendee,
+                  sessionType: 'main-conference' 
+                })}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Approve Main Conference
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button
+            onClick={() => setConfirmState({ open: true, action: 'approve', attendee: selectedAttendee })}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            Approve
+          </Button>
+        )}   
                   </div>
                 </div>
               </div>
@@ -581,31 +636,42 @@ export default function AdminDashboardPage() {
                         <th className="text-left p-3">Email</th>
                         <th className="text-left p-3">Ticket</th>
                         <th className="text-left p-3">Status</th>
-                        <th className="text-center p-3">Checked In</th>
+                        <th className="text-center p-3">Pre-Conf (Jan 20)</th>
+                        <th className="text-center p-3">Main Conf (Jan 21)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {allAttendees.map((a) => (
-                        <tr key={a._id} className="border-b hover:bg-zinc-50">
-                          <td className="p-3">{a.name}</td>
-                          <td className="p-3 text-zinc-500">{a.email}</td>
-                          <td className="p-3 capitalize">{a.ticketType}</td>
-                          <td className="p-3">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs ${
-                                a.paymentStatus === "approved"
-                                  ? "bg-green-100 text-green-700"
-                                  : a.paymentStatus === "pending"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              {a.paymentStatus}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">{a.checkInStatus === "checked-in" ? "✅" : "❌"}</td>
-                        </tr>
-                      ))}
+    <tr key={a._id} className="border-b hover:bg-zinc-50">
+      <td className="p-3">{a.name}</td>
+      <td className="p-3 text-zinc-500">{a.email}</td>
+      <td className="p-3 capitalize">{a.ticketType}</td>
+      <td className="p-3">
+        <span className={`px-2 py-1 rounded-full text-xs ${
+          a.paymentStatus === "approved"
+            ? "bg-green-100 text-green-700"
+            : a.paymentStatus === "pending"
+            ? "bg-yellow-100 text-yellow-700"
+            : "bg-red-100 text-red-700"
+        }`}>
+          {a.paymentStatus}
+        </span>
+      </td>
+      <td className="p-3 text-center">
+        {a.ticketType === 'Lecturer Premium' ? (
+          a.preConferenceCheckInStatus === "checked-in" ? "✅" : "❌"
+        ) : (
+          <span className="text-zinc-400">N/A</span>
+        )}
+      </td>
+      <td className="p-3 text-center">
+        {a.ticketType === 'Lecturer Premium' 
+          ? (a.mainConferenceCheckInStatus === "checked-in" ? "✅" : "❌")
+          : (a.checkInStatus === "checked-in" ? "✅" : "❌")
+        }
+      </td>
+    </tr>
+  ))}
                     </tbody>
                   </table>
                 </div>
