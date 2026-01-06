@@ -67,6 +67,7 @@ export default function AgentDashboardPage() {
           status: item.checkInStatus === "checked-in" ? "success" : "invalid",
           scannedAt: item.checkedInAt,
           scannedBy: item.checkedInBy?.name,
+          sessionType: item.sessionType,
         }))
         setScanHistory(formattedHistory)
         setStats(stats)
@@ -120,6 +121,7 @@ export default function AgentDashboardPage() {
       let scannedByAgent: string | undefined = undefined
       let checkedInAtTime: string | undefined = undefined
       let attendeeName: string | undefined = undefined
+      let sessionType: string | undefined = undefined
 
       if (err.response && err.response.data) {
         const { message, details } = err.response.data;
@@ -131,6 +133,7 @@ export default function AgentDashboardPage() {
             attendeeName = details.attendeeName
             scannedByAgent = details.checkedInBy
             checkedInAtTime = details.checkedInAt
+            sessionType = details.sessionType
           }
         }
       }
@@ -144,6 +147,7 @@ export default function AgentDashboardPage() {
         scannedAt: new Date().toISOString(),
         scannedBy: scannedByAgent,
         checkedInAt: checkedInAtTime,
+        sessionType,
       }
 
       setLastResult(result)
@@ -300,7 +304,7 @@ export default function AgentDashboardPage() {
                     </p>
                   )}
                   {lastResult.sessionType && (
-                      <p className="text-sm text-yellow-500 capitalize mt-1">{lastResult.sessionType}</p>
+                      <p className="text-sm text-yellow-700 capitalize mt-1">{lastResult.sessionType}</p>
                     )}
                 </>
               )}
