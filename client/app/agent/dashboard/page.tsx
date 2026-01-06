@@ -212,7 +212,7 @@ export default function AgentDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white">
+    <div className="min-h-screen bg-linear-to-br from-purple-50 via-indigo-50 to-white">
       <header className="bg-white/80 backdrop-blur border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -277,6 +277,9 @@ export default function AgentDashboardPage() {
                   <h3 className="text-2xl font-bold text-green-700">Entry Granted</h3>
                   <p className="text-lg text-green-600 mt-2">{lastResult.attendeeName}</p>
                   <p className="text-sm text-green-500 capitalize">{lastResult.ticketType} ticket</p>
+                  {lastResult.sessionType && (
+                    <p className="text-sm text-green-500 capitalize">{lastResult.sessionType}</p>
+                  )}
                 </>
               )}
 
@@ -296,6 +299,9 @@ export default function AgentDashboardPage() {
                         })}`}
                     </p>
                   )}
+                  {lastResult.sessionType && (
+                      <p className="text-sm text-yellow-500 capitalize mt-1">{lastResult.sessionType}</p>
+                    )}
                 </>
               )}
 
