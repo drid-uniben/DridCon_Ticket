@@ -24,6 +24,13 @@ export default function FormPage() {
 
   const descriptionSections: DescriptionSection[] = [
     {
+      heading: "Announcements",
+      items: [
+        "The Student Pass (₦1,000 – Early Bird) is ending today, Wednesday, by 11:59 pm.",
+        "The pre-conference workshop for Lecturer Premium ticket holders will focus mainly on teaching how to commercialize your research.",
+      ],
+    },
+    {
       heading: "Overview",
       text:
         "The Directorate of Research, Innovation and Development, DRID UNIBEN, invites researchers, students, and innovators to a dynamic conference and innovation fair that highlights the creativity and impact of the campus community.",
