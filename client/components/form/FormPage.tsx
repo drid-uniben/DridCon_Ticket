@@ -20,14 +20,14 @@ export default function FormPage() {
   const [department, setDepartment] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [referralCode, setReferralCode] = useState("")
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const descriptionSections: DescriptionSection[] = [
     {
       heading: "Announcements",
       items: [
-        "The Student Pass (₦1,000 – Early Bird) is ending today, Wednesday, by 11:59 pm.",
-        "The pre-conference workshop for Lecturer Premium ticket holders will focus mainly on teaching how to commercialize your research.",
+        "The Student Pass (₦1,000 – Early Bird) is ending today, Thursday, by 11:59 pm.",
       ],
     },
     {
@@ -75,10 +75,16 @@ export default function FormPage() {
       items: [
         "All Researcher Premium benefits",
         "Access to BOTH Pre-Conference Session (January 20) for Lecturers AND Main Conference (January 21)",
+        "Pre-Conference Workshop: Tuesday, January 20, 2026, 9:00 AM at Akin Deko Auditorium, UNIBEN",
         "Two separate tickets with unique QR codes for each session",
         "VIP seating at both events",
         "Comprehensive conference package with all materials",
       ],
+    },
+    {
+      heading: "Pre-Conference Workshop Theme: Commercializing Research",
+      text:
+        "The Lecturer Premium pre-conference session focuses on bridging the gap between academic research and economic impact. This exclusive workshop equips academic staff with practical strategies and insights on translating research findings into commercially viable innovations. Learn how to navigate the commercialization landscape, protect intellectual property, and create sustainable value from your research.",
     },
     {
       heading: "Payment Details",
@@ -134,6 +140,7 @@ export default function FormPage() {
         ticketType: ticket,
         designation,
         department,
+        referralCode,
         paymentProof: file || undefined,
       })
 
@@ -145,6 +152,7 @@ export default function FormPage() {
       setTicket("Student Pass")
       setDesignation("")
       setDepartment("")
+      setReferralCode("")
       setFile(null)
     } catch (err) {
       let errorMessage = "Submission failed. Try again."
@@ -199,6 +207,10 @@ export default function FormPage() {
                 { label: "Lecturer Premium (₦6,000)", value: "Lecturer Premium" },
               ]}
             />
+          </FormCard>
+
+          <FormCard heading="Referral Code (optional)" description="Enter a referral code if you have one.">
+            <TextField label="Referral Code" name="referralCode" value={referralCode} onChange={setReferralCode} placeholder="e.g. MED" />
           </FormCard>
 
           <FormCard heading="Upload payment receipt" description="Drag & drop or click to browse.">
