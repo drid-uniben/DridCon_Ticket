@@ -60,6 +60,7 @@ export interface IUser extends Document {
   mainConferenceCheckInStatus?: CheckInStatus;
   mainConferenceCheckedInAt?: Date;
   mainConferenceCheckedInBy?: Schema.Types.ObjectId;
+  referralCode?: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -154,6 +155,10 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     qrCode: {
       type: String,
+    },
+    referralCode: {
+      type: String,
+      trim: true,
     },
     paymentStatus: {
       type: String,

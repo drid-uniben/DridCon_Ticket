@@ -22,7 +22,8 @@ type Attendee = {
   mainConferenceQrCode?: string
   preConferenceCheckInStatus?: "checked-in" | "not-checked-in"
   mainConferenceCheckInStatus?: "checked-in" | "not-checked-in"
-  createdAt: string
+  createdAt: string,
+  referralCode?: string
 }
 
 type Agent = {
@@ -450,9 +451,15 @@ export default function AdminDashboardPage() {
   >
     Lecturer Premium ({pendingAttendees.filter(a => a.ticketType === 'Lecturer Premium').length})
   </Button>
+  <Button
+    variant={filter === 'referral' ? 'default' : 'outline'}
+    onClick={() => setFilter('referral')}
+  >
+    By Referral ({pendingAttendees.filter(a => a.referralCode).length})
+  </Button>
 </div>
 
-{(filter === 'all' ? pendingAttendees : pendingAttendees.filter(a => a.ticketType === 'Lecturer Premium')).map((attendee) => (
+{(filter === 'all' ? pendingAttendees : filter === 'lecturer' ? pendingAttendees.filter(a => a.ticketType === 'Lecturer Premium') : pendingAttendees.filter(a => a.referralCode)).map((attendee) => (
                     <div key={attendee._id} className="border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
                         <p className="font-medium text-zinc-900">{attendee.name}</p>
@@ -501,6 +508,7 @@ export default function AdminDashboardPage() {
                   <p><strong>Phone:</strong> {selectedAttendee.phoneNumber}</p>
                   <p><strong>Designation:</strong> {selectedAttendee.designation}</p>
                   <p><strong>Department:</strong> {selectedAttendee.department || "N/A"}</p>
+                  <p><strong>Referral Code:</strong> {selectedAttendee.referralCode || "N/A"}</p>
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">Ticket Type</label>
                     <select

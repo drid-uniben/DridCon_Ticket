@@ -83,7 +83,7 @@ class AuthController {
 
   register = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const { name, email, phoneNumber, ticketType, designation, department } =
+      const { name, email, phoneNumber, ticketType, designation, department, referralCode } =
         req.body;
 
       if (!req.file) {
@@ -116,6 +116,7 @@ class AuthController {
         designation,
         department,
         paymentProof,
+        referralCode,
         originalFilename: req.file ? req.file.originalname : '',
         fileSize: req.file ? req.file.size : 0,
         fileType: req.file ? req.file.mimetype : '',
