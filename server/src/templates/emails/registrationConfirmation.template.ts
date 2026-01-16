@@ -9,7 +9,8 @@ import {
 
 export const registrationConfirmationTemplate = (
   name: string,
-  ticketType?: string
+  ticketType?: string,
+  wantsPreConference?: boolean
 ): string => {
   const eventDetailsStyle = `
     background: #f3f4f6;
@@ -27,6 +28,8 @@ export const registrationConfirmationTemplate = (
 
   const isLecturerPremium = ticketType === 'Lecturer Premium';
 
+  const isResearcherPremium = ticketType === 'Researcher Premium';
+
   return `
     ${responsiveStyles}
     <div class="email-container" style="${containerStyles}">
@@ -34,6 +37,32 @@ export const registrationConfirmationTemplate = (
         <h1 style="${headerStyles}">DridCon 2026 Registration</h1>
         <p style="${paragraphStyles}">Hi ${name},</p>
         <p style="${paragraphStyles}">Thank you for registering for DridCon! Your registration was successful.</p>
+
+        ${
+          isResearcherPremium
+            ? `
+  <p style="${paragraphStyles}">
+    <strong>Researcher Premium Benefits:</strong> As a Researcher Premium attendee, 
+    you have the option to attend the Pre-Conference Session on January 20, 2026. 
+  </p>
+  <div style="${eventDetailsStyle}">
+    <p style="margin: 0 0 10px 0;">
+      The Pre-Conference Session is an exclusive opportunity for deeper engagement with 
+      experts on commercializing research and innovation.
+    </p>
+    ${
+      wantsPreConference
+        ? `<p style="margin: 0;">
+             You indicated you <strong>want to attend the Pre-Conference Session</strong>. We will send you further details and your Pre-Conference ticket upon payment confirmation.
+           </p>`
+        : `<p style="margin: 0;">
+             You chose to focus on the Main Conference only during registration as this aligns with your preferences/schedule and we are expecting you to attend the Main Conference on January 21, 2026.
+           </p>`
+    }
+  </div>
+`
+            : ''
+        }
         
         ${
           isLecturerPremium

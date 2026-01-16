@@ -215,6 +215,11 @@ export const authApi = {
     const res = await api.get("/auth/me");
     return res.data;
   },
+
+  respondToPreConferenceInvite: async (data: {
+    token: string;
+    response: "yes" | "no";
+  }) => (await api.post("/auth/respond-preconf-invite", data)).data,
 };
 
 // Admin API
@@ -239,6 +244,11 @@ export const adminApi = {
     (await api.post(`/admin/attendees/${id}/decline`)).data,
   getAllAttendees: async () => (await api.get("/admin/attendees")).data,
   getDashboardData: async () => (await api.get("/admin/dashboard")).data,
+  getResearcherPremiumAttendees: async () =>
+    (await api.get("/admin/attendees/researcher-premium")).data,
+
+  sendPreConferenceInvite: async (data: { attendeeId: string }) =>
+    (await api.post("/admin/attendees/send-preconf-invite", data)).data,
 };
 
 // Scan API

@@ -20,6 +20,8 @@ function CompleteRegistrationContent() {
   const [verifying, setVerifying] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [invitedTicketType, setInvitedTicketType] = useState<string | null>(null)
+const [wantsPreConference, setWantsPreConference] = useState<string>("")
 
   // Verify invite token on mount
   useEffect(() => {
@@ -38,6 +40,7 @@ function CompleteRegistrationContent() {
         if (data.phoneNumber) setPhone(data.phoneNumber)
         if (data.designation) setDesignation(data.designation)
         if (data.department) setDepartment(data.department)
+        if (data.ticketType) setInvitedTicketType(data.ticketType)
       } catch {
         setError("Invalid or expired invitation link")
       } finally {
@@ -56,6 +59,12 @@ function CompleteRegistrationContent() {
       return
     }
 
+    // Validate pre-conference choice for researcher premium
+  if (invitedTicketType === "Researcher Premium" && !wantsPreConference) {
+    setError("Please select whether you want to attend the pre-conference.")
+    return
+  }
+
     setLoading(true)
     try {
       await authApi.completeRegistration({
@@ -64,6 +73,7 @@ function CompleteRegistrationContent() {
         phoneNumber: phone,
         designation,
         department,
+        wantsPreConference: invitedTicketType === "Researcher Premium" ? wantsPreConference === "yes" : undefined,
       })
       setSuccess(true)
     } catch (err) {
@@ -96,7 +106,7 @@ function CompleteRegistrationContent() {
           </div>
           <h1 className="text-2xl font-bold text-zinc-900">Registration Complete!</h1>
           <p className="text-zinc-600">
-            Your ticket with QR code has been sent to your email. If you don't receive a confirmation email then
+            Your ticket with QR code has been sent to your email. If you don&apos;t receive a confirmation email then
             contact support at <a href="mailto:drid@uniben.edu" className="text-purple-600 hover:underline">drid@uniben.edu</a>
           </p>
           <Button onClick={() => router.push("/")} className="bg-gradient-to-r from-purple-600 to-indigo-600">
@@ -181,6 +191,42 @@ function CompleteRegistrationContent() {
               placeholder="e.g. Computer Science"
             />
           </div>
+
+          {invitedTicketType === "Researcher Premium" && (
+  <div className="p-4 rounded-xl bg-purple-50 border border-purple-200">
+    <label className="block text-sm font-medium text-zinc-700 mb-3">
+      Pre-Conference Attendance (January 20, 2026) *
+    </label>
+    <p className="text-xs text-zinc-600 mb-3">
+      As a Researcher Premium attendee, you have the option to attend the exclusive 
+      Pre-Conference Session on January 20, 2026.
+    </p>
+    <div className="space-y-2">
+      <label className="flex items-center gap-2">
+        <input
+          type="radio"
+          name="preConference"
+          value="yes"
+          checked={wantsPreConference === "yes"}
+          onChange={(e) => setWantsPreConference(e.target.value)}
+          className="h-4 w-4"
+        />
+        <span className="text-sm">Yes, I want to attend the Pre-Conference</span>
+      </label>
+      <label className="flex items-center gap-2">
+        <input
+          type="radio"
+          name="preConference"
+          value="no"
+          checked={wantsPreConference === "no"}
+          onChange={(e) => setWantsPreConference(e.target.value)}
+          className="h-4 w-4"
+        />
+        <span className="text-sm">No, Main Conference only</span>
+      </label>
+    </div>
+  </div>
+)}
 
           {/* Password and confirm password removed from UI per spec */}
 

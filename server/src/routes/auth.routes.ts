@@ -41,7 +41,8 @@ router.post('/register', standardLimit, upload.single('paymentProof'), authContr
 router.post('/login', standardLimit, authController.login);
 router.post('/refresh-token', standardLimit, authController.refreshToken);
 router.post('/logout', authController.logout);
-router.post('/complete-registration', standardLimit, authController.completeRegistration)
+router.post('/complete-registration', standardLimit, authController.completeRegistration);
+router.post('/respond-preconf-invite', standardLimit, authController.respondToPreConferenceInvite);
 router.get('/verify-invite', standardLimit, authController.verifyInvite);
 
 // Route to get current user info - protected by auth middleware

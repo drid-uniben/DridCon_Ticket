@@ -4,6 +4,7 @@ import { ticketTemplate } from './ticket.template';
 import { registrationConfirmationTemplate } from './registrationConfirmation.template';
 import { preConferenceTicketTemplate } from './preConferenceTicket.template';
 import { declineRegistrationTemplate } from './declineRegistration.template';
+import { preConferenceInviteTemplate } from './preConferenceInvite.template';
 
 export {
   agentCredentialsTemplate,
@@ -12,4 +13,5 @@ export {
   registrationConfirmationTemplate,
   preConferenceTicketTemplate,
   declineRegistrationTemplate,
+  preConferenceInviteTemplate,
 };

@@ -1,8 +1,10 @@
+/* eslint-disable max-lines */
 import { Request, Response } from 'express';
 import User, {
   UserRole,
   PaymentStatus,
   CheckInStatus,
+  TicketType,
 } from '../model/user.model';
 import tokenService, { TokenPayload } from '../services/token.service'; // Import TokenPayload
 import { UnauthorizedError, BadRequestError } from '../utils/customErrors';
@@ -83,8 +85,16 @@ class AuthController {
 
   register = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const { name, email, phoneNumber, ticketType, designation, department, referralCode } =
-        req.body;
+      const {
+        name,
+        email,
+        phoneNumber,
+        ticketType,
+        designation,
+        department,
+        referralCode,
+        wantsPreConference,
+      } = req.body;
 
       if (!req.file) {
         throw new BadRequestError('Payment receipt is required.');
@@ -108,7 +118,8 @@ class AuthController {
       }
 
       // Create new user (no password for attendees)
-      const user = await User.create({
+      // Prepare user data
+      const userData: any = {
         name,
         email,
         phoneNumber,
@@ -124,13 +135,31 @@ class AuthController {
         isActive: true,
         checkInStatus: CheckInStatus.NOT_CHECKED_IN,
         ticketsent: false,
-      });
+      };
+
+      // Handle Researcher Premium pre-conference choice
+      if (ticketType === TicketType.RESEARCHER_PREMIUM) {
+        if (wantsPreConference === true || wantsPreConference === 'true') {
+          userData.wantsPreConference = true;
+          userData.preConferenceDeclinedDuringReg = false;
+        } else if (
+          wantsPreConference === false ||
+          wantsPreConference === 'false'
+        ) {
+          userData.wantsPreConference = false;
+          userData.preConferenceDeclinedDuringReg = true;
+        }
+      }
+
+      // Create new user
+      const user = await User.create(userData);
 
       // Send registration confirmation email
       await emailService.sendRegistrationConfirmation(
         user.email,
         user.name,
-        user.ticketType
+        user.ticketType,
+        user.wantsPreConference
       );
 
       // Generate tokens
@@ -330,8 +359,14 @@ class AuthController {
 
   completeRegistration = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const { inviteToken, name, phoneNumber, designation, department } =
-        req.body;
+      const {
+        inviteToken,
+        name,
+        phoneNumber,
+        designation,
+        department,
+        wantsPreConference,
+      } = req.body;
 
       if (!inviteToken || !name || !phoneNumber) {
         throw new BadRequestError(
@@ -348,36 +383,143 @@ class AuthController {
         throw new BadRequestError('Invalid or expired invite token.');
       }
 
-      const { token, filePath } = await generateQRCode({ email: user.email });
-
       user.name = name;
       user.phoneNumber = phoneNumber;
-
       user.designation = designation;
       user.department = department;
-      user.qrCode = token;
+
+      // Handle Researcher Premium pre-conference choice
+      if (user.ticketType === TicketType.RESEARCHER_PREMIUM) {
+        if (wantsPreConference === true || wantsPreConference === 'true') {
+          user.wantsPreConference = true;
+          user.preConferenceDeclinedDuringReg = false;
+        } else if (
+          wantsPreConference === false ||
+          wantsPreConference === 'false'
+        ) {
+          user.wantsPreConference = false;
+          user.preConferenceDeclinedDuringReg = true;
+        }
+      }
+
       user.paymentStatus = PaymentStatus.CONFIRMED;
       user.inviteToken = undefined;
       user.inviteTokenExpires = undefined;
       user.isActive = true;
 
-      await user.save();
+      // Check if needs both tickets (Researcher Premium with pre-conference OR Lecturer Premium)
+      const needsBothTickets =
+        user.ticketType === TicketType.LECTURER_PREMIUM ||
+        (user.ticketType === TicketType.RESEARCHER_PREMIUM &&
+          user.wantsPreConference);
 
-      if (!user.ticketType) {
-        throw new BadRequestError('User does not have a ticket type.');
+      if (needsBothTickets) {
+        // Generate pre-conference ticket
+        const preConf = await generateQRCode(
+          { email: user.email },
+          'pre-conference'
+        );
+        user.preConferenceQrCode = preConf.token;
+
+        const preConfUrl = `${process.env.API_URL}${preConf.filePath}`;
+        await emailService.sendPreConferenceTicket(
+          user.email,
+          user.name,
+          preConfUrl,
+          user.ticketType!
+        );
+
+        // Generate main conference ticket
+        const mainConf = await generateQRCode(
+          { email: user.email },
+          'main-conference'
+        );
+        user.mainConferenceQrCode = mainConf.token;
+
+        const mainConfUrl = `${process.env.API_URL}${mainConf.filePath}`;
+        await emailService.sendTicketWithQR(
+          user.email,
+          user.name,
+          mainConfUrl,
+          user.ticketType!
+        );
+      } else {
+        // Single ticket
+        const { token, filePath } = await generateQRCode({ email: user.email });
+        user.qrCode = token;
+
+        if (!user.ticketType) {
+          throw new BadRequestError('User does not have a ticket type.');
+        }
+
+        const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+        await emailService.sendTicketWithQR(
+          user.email,
+          user.name,
+          qrCodeUrl,
+          user.ticketType
+        );
       }
 
-      const qrCodeUrl = `${process.env.API_URL}${filePath}`;
-      await emailService.sendTicketWithQR(
-        user.email,
-        user.name,
-        qrCodeUrl,
-        user.ticketType
-      );
+      await user.save();
 
       res.status(200).json({
         success: true,
         message: 'Registration completed successfully.',
+      });
+    }
+  );
+
+  respondToPreConferenceInvite = asyncHandler(
+    async (req: Request, res: Response) => {
+      const { token, response } = req.body;
+
+      if (!token || !response) {
+        throw new BadRequestError('Token and response are required.');
+      }
+
+      const attendee = await User.findOne({
+        inviteToken: token,
+        inviteTokenExpires: { $gt: new Date() },
+      });
+
+      if (!attendee) {
+        throw new BadRequestError('Invalid or expired invite token.');
+      }
+
+      attendee.preConferenceInviteResponse = response;
+      attendee.preConferenceInviteRespondedAt = new Date();
+      attendee.inviteToken = undefined;
+      attendee.inviteTokenExpires = undefined;
+
+      if (response === 'yes') {
+        attendee.wantsPreConference = true;
+
+        // Generate and send pre-conference ticket immediately
+        const preConf = await generateQRCode(
+          { email: attendee.email },
+          'pre-conference'
+        );
+        attendee.preConferenceQrCode = preConf.token;
+
+        const preConfUrl = `${process.env.API_URL}${preConf.filePath}`;
+        if (attendee.ticketType) {
+          await emailService.sendPreConferenceTicket(
+            attendee.email,
+            attendee.name,
+            preConfUrl,
+            attendee.ticketType
+          );
+        }
+      } else {
+        attendee.wantsPreConference = false;
+      }
+
+      await attendee.save();
+
+      res.status(200).json({
+        success: true,
+        message: `Response recorded: ${response}. ${response === 'yes' ? 'Pre-conference ticket sent.' : ''}`,
       });
     }
   );

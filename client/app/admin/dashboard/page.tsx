@@ -15,7 +15,7 @@ type Attendee = {
   ticketType: string
   department?: string
   designation: string
-  paymentStatus: "pending" | "approved" | "declined"
+  paymentStatus: "pending" | "confirmed" | "declined"
   paymentProof?: string
   checkInStatus: "checked-in" | "not-checked-in"
   preConferenceQrCode?: string
@@ -23,7 +23,11 @@ type Attendee = {
   preConferenceCheckInStatus?: "checked-in" | "not-checked-in"
   mainConferenceCheckInStatus?: "checked-in" | "not-checked-in"
   createdAt: string,
-  referralCode?: string
+  referralCode?: string,
+  wantsPreConference?: boolean,
+  preConferenceInviteSent?: boolean,
+  preConferenceDeclinedDuringReg?: boolean,
+  preConferenceInviteResponse?: 'pending' | 'yes' | 'no',
 }
 
 type Agent = {
@@ -40,7 +44,7 @@ type DashboardDataType = {
   pendingApprovalsCount: number
 }
 
-type TabType = "pending" | "attendees" | "agents" | "manual" | "invite"
+type TabType = "pending" | "attendees" | "agents" | "manual" | "invite" | "preconference"
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -58,12 +62,16 @@ export default function AdminDashboardPage() {
   const [imageError, setImageError] = useState<string | null>(null)
   const [imageMimeType, setImageMimeType] = useState<string | null>(null)
   const [filter, setFilter] = useState('all')
+  const [attendeesFilter, setAttendeesFilter] = useState('all')
+  const [preConferenceSubTab, setPreConferenceSubTab] = useState<'researcher' | 'all'>('researcher')
+  const [researcherPremiumAttendees, setResearcherPremiumAttendees] = useState<Attendee[]>([])
+
 
   const [confirmState, setConfirmState] = useState<
     | { open: false }
     | {
         open: true
-        action: "approve" | "decline"
+        action: "approve" | "decline" | "sendPreConferenceInvite"
         attendee: Attendee
         sessionType?: 'pre-conference' | 'main-conference'
       }
@@ -138,6 +146,7 @@ export default function AdminDashboardPage() {
     ticketType: "Student Pass",
     department: "",
     designation: "",
+    wantsPreConference: false,
   })
 
   // Invite form
@@ -162,7 +171,7 @@ export default function AdminDashboardPage() {
       router.push("/login")
     }
   }, [user, router])
-
+  
   const fetchAttendees = useCallback(async () => {
     setLoading(true)
     try {
@@ -174,7 +183,7 @@ export default function AdminDashboardPage() {
       setLoading(false)
     }
   }, [])
-
+  
   const fetchAgents = useCallback(async () => {
     setLoading(true)
     try {
@@ -186,6 +195,34 @@ export default function AdminDashboardPage() {
       setLoading(false)
     }
   }, [])
+  
+  // Fetch researcher premium attendees function:
+  const fetchResearcherPremium = useCallback(async () => {
+  setLoading(true)
+  try {
+    const res = await adminApi.getResearcherPremiumAttendees()
+    setResearcherPremiumAttendees(res.data || res || [])
+  } catch {
+    setMessage({ type: "error", text: "Failed to load researcher premium attendees" })
+  } finally {
+    setLoading(false)
+  }
+  }, [])
+  
+  // Function to send pre-conference invite:
+  async function handleSendPreConferenceInvite(attendeeId: string) {
+  setLoading(true)
+  try {
+    await adminApi.sendPreConferenceInvite({ attendeeId })
+    setMessage({ type: "success", text: "Pre-conference invite sent!" })
+    fetchResearcherPremium()
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to send invite"
+    setMessage({ type: "error", text: errorMessage })
+  } finally {
+    setLoading(false)
+  }
+  }
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true)
@@ -206,8 +243,11 @@ export default function AdminDashboardPage() {
       fetchAttendees()
     } else if (activeTab === "agents") {
       fetchAgents()
-    }
-  }, [activeTab, fetchAttendees, fetchAgents, fetchDashboardData])
+    } else if (activeTab === "preconference") {
+    fetchResearcherPremium()
+    fetchAttendees() // For "all" sub-tab
+  }
+  }, [activeTab, fetchAttendees, fetchAgents, fetchDashboardData, fetchResearcherPremium])
 
   async function approveAttendee(id: string, ticketType: string, sessionType?: 'pre-conference' | 'main-conference') {
     try {
@@ -242,7 +282,10 @@ export default function AdminDashboardPage() {
 
 
         await approveAttendee(confirmState.attendee._id, ticketType, confirmState.sessionType)
-      } else {
+      } else if (confirmState.action === 'sendPreConferenceInvite') {
+        await handleSendPreConferenceInvite(confirmState.attendee._id);
+      }
+      else {
         await declineAttendee(confirmState.attendee._id)
         // If admin declines from within the details modal, close it to avoid stale state.
         if (isModalOpen && selectedAttendee?._id === confirmState.attendee._id) {
@@ -256,21 +299,29 @@ export default function AdminDashboardPage() {
   }
 
   async function handleManualRegister(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await adminApi.manualRegister(manualForm)
-      setMessage({ type: "success", text: "Attendee registered! QR code sent via email." })
-      setManualForm({ name: "", email: "", phoneNumber: "", ticketType: "Student Pass", department: "", designation: "" })
-      setActiveTab("attendees")
-      fetchAttendees()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to register attendee"
-      setMessage({ type: "error", text: errorMessage })
-    } finally {
-      setLoading(false)
-    }
+  e.preventDefault()
+  setLoading(true)
+  try {
+    await adminApi.manualRegister(manualForm)
+    setMessage({ type: "success", text: "Attendee registered! QR code(s) sent via email." })
+    setManualForm({ 
+      name: "", 
+      email: "", 
+      phoneNumber: "", 
+      ticketType: "Student Pass", 
+      department: "", 
+      designation: "",
+      wantsPreConference: false,
+    })
+    setActiveTab("attendees")
+    fetchAttendees()
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to register attendee"
+    setMessage({ type: "error", text: errorMessage })
+  } finally {
+    setLoading(false)
   }
+}
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -321,6 +372,7 @@ export default function AdminDashboardPage() {
     }
   }
 
+
   async function handleLogout() {
     await logout()
     router.push("/login")
@@ -335,6 +387,7 @@ export default function AdminDashboardPage() {
     { id: "agents" as TabType, label: "Agents", count: dashboardData.totalAgentsCount },
     { id: "manual" as TabType, label: "Manual Register" },
     { id: "invite" as TabType, label: "Invite User" },
+    { id: "preconference" as TabType, label: "Pre-Conference" },
   ]
 
   return (
@@ -345,6 +398,8 @@ export default function AdminDashboardPage() {
           confirmState.open
             ? confirmState.action === "approve"
               ? "Approve payment?"
+              : confirmState.action === 'sendPreConferenceInvite'
+              ? 'Send pre-conference invite?'
               : "Decline payment?"
             : ""
         }
@@ -352,7 +407,7 @@ export default function AdminDashboardPage() {
           confirmState.open ? (
             <div className="space-y-2">
               <div>
-                You’re about to <span className="font-medium">{confirmState.action}</span> payment for:
+                You’re about to <span className="font-medium">{confirmState.action === 'sendPreConferenceInvite' ? 'send a pre-conference invite' : `${confirmState.action} payment`}</span> for:
               </div>
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
                 <div className="font-medium text-zinc-900">{confirmState.attendee.name}</div>
@@ -361,13 +416,23 @@ export default function AdminDashboardPage() {
               </div>
               {confirmState.action === "decline" ? (
                 <div className="text-sm text-zinc-600">This will mark the payment as declined.</div>
+              ) : confirmState.action === 'sendPreConferenceInvite' ? (
+                <div className="text-sm text-zinc-600">This will send an email to the user with a link to respond to the pre-conference invite.</div>
               ) : (
                 <div className="text-sm text-zinc-600">This will approve the payment and send the QR code via email.</div>
               )}
             </div>
           ) : null
         }
-        confirmText={confirmState.open ? (confirmState.action === "approve" ? "Approve" : "Decline") : "Confirm"}
+        confirmText={
+          confirmState.open 
+            ? confirmState.action === "approve" 
+              ? "Approve" 
+              : confirmState.action === 'sendPreConferenceInvite'
+              ? 'Send Invite'
+              : "Decline" 
+            : "Confirm"
+        }
         cancelText="Cancel"
         variant={confirmState.open && confirmState.action === "decline" ? "danger" : "default"}
         loading={confirmLoading}
@@ -522,6 +587,21 @@ export default function AdminDashboardPage() {
                       <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
                     </select>
                   </div>
+
+                  {selectedAttendee.ticketType === 'Researcher Premium' && (
+        <>
+          <p><strong>Pre-Conference:</strong> {
+            selectedAttendee.wantsPreConference === true 
+              ? "Yes (wants to attend)" 
+              : selectedAttendee.preConferenceDeclinedDuringReg 
+                ? "No (declined during registration)" 
+                : selectedAttendee.preConferenceInviteSent
+                  ? `Invite sent - ${selectedAttendee.preConferenceInviteResponse || 'pending'}`
+                  : "Not yet invited"
+          }</p>
+        </>
+      )}
+
                   {selectedAttendee.paymentProof && (
                     <div className="mt-4">
                       <p className="font-medium mb-2">Payment Receipt</p>
@@ -587,7 +667,8 @@ export default function AdminDashboardPage() {
           Close
         </Button>
         
-        {selectedAttendee.ticketType === 'Lecturer Premium' ? (
+        {selectedAttendee.ticketType === 'Lecturer Premium' || 
+         (selectedAttendee.ticketType === 'Researcher Premium' && selectedAttendee.wantsPreConference) ? (
           <>
             {!selectedAttendee.preConferenceQrCode && (
               <Button
@@ -632,13 +713,44 @@ export default function AdminDashboardPage() {
 
           {/* All Attendees */}
           {activeTab === "attendees" && (
-            <div>
-              <h2 className="text-lg font-semibold mb-4">All Attendees</h2>
-              {loading ? (
-                <p className="text-zinc-500">Loading...</p>
-              ) : allAttendees.length === 0 ? (
-                <p className="text-zinc-500">No attendees yet</p>
-              ) : (
+  <div>
+    <h2 className="text-lg font-semibold mb-4">All Attendees</h2>
+    
+    <div className="flex gap-2 mb-4">
+      <Button
+        variant={attendeesFilter === 'all' ? 'default' : 'outline'}
+        onClick={() => setAttendeesFilter('all')}
+      >
+        All ({allAttendees.length})
+      </Button>
+      <Button
+        variant={attendeesFilter === 'pending' ? 'default' : 'outline'}
+        onClick={() => setAttendeesFilter('pending')}
+      >
+        Pending ({allAttendees.filter(a => a.paymentStatus === 'pending').length})
+      </Button>
+      <Button
+        variant={attendeesFilter === 'confirmed' ? 'default' : 'outline'}
+        onClick={() => setAttendeesFilter('confirmed')}
+      >
+        Confirmed ({allAttendees.filter(a => a.paymentStatus === 'confirmed').length})
+      </Button>
+      <Button
+        variant={attendeesFilter === 'declined' ? 'default' : 'outline'}
+        onClick={() => setAttendeesFilter('declined')}
+      >
+        Declined ({allAttendees.filter(a => a.paymentStatus === 'declined').length})
+      </Button>
+    </div>
+    
+    {loading ? (
+      <p className="text-zinc-500">Loading...</p>
+    ) : (attendeesFilter === 'all' ? allAttendees : 
+        attendeesFilter === 'pending' ? allAttendees.filter(a => a.paymentStatus === 'pending') :
+        attendeesFilter === 'confirmed' ? allAttendees.filter(a => a.paymentStatus === 'confirmed') :
+        allAttendees.filter(a => a.paymentStatus === 'declined')).length === 0 ? (
+      <p className="text-zinc-500">No attendees in this category</p>
+    ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -652,14 +764,21 @@ export default function AdminDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {allAttendees.map((a) => (
+                      {(attendeesFilter === 'all'
+                        ? allAttendees
+                        : attendeesFilter === 'pending'
+                        ? allAttendees.filter((a) => a.paymentStatus === 'pending')
+                        : attendeesFilter === 'confirmed'
+                        ? allAttendees.filter((a) => a.paymentStatus === 'confirmed')
+                        : allAttendees.filter((a) => a.paymentStatus === 'declined')
+                      ).map((a) => (
     <tr key={a._id} className="border-b hover:bg-zinc-50">
       <td className="p-3">{a.name}</td>
       <td className="p-3 text-zinc-500">{a.email}</td>
       <td className="p-3 capitalize">{a.ticketType}</td>
       <td className="p-3">
         <span className={`px-2 py-1 rounded-full text-xs ${
-          a.paymentStatus === "approved"
+          a.paymentStatus === "confirmed"
             ? "bg-green-100 text-green-700"
             : a.paymentStatus === "pending"
             ? "bg-yellow-100 text-yellow-700"
@@ -669,14 +788,14 @@ export default function AdminDashboardPage() {
         </span>
       </td>
       <td className="p-3 text-center">
-        {a.ticketType === 'Lecturer Premium' ? (
+        {(a.ticketType === 'Lecturer Premium' || (a.ticketType === 'Researcher Premium' && a.preConferenceQrCode)) ? (
           a.preConferenceCheckInStatus === "checked-in" ? "✅" : "❌"
         ) : (
           <span className="text-zinc-400">N/A</span>
         )}
       </td>
       <td className="p-3 text-center">
-        {a.ticketType === 'Lecturer Premium' 
+        {(a.ticketType === 'Lecturer Premium' || (a.ticketType === 'Researcher Premium' && a.preConferenceQrCode)) 
           ? (a.mainConferenceCheckInStatus === "checked-in" ? "✅" : "❌")
           : (a.checkInStatus === "checked-in" ? "✅" : "❌")
         }
@@ -782,21 +901,36 @@ export default function AdminDashboardPage() {
                   className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
                 />
                 <select
-                  value={manualForm.ticketType}
-                  onChange={(e) => setManualForm({ ...manualForm, ticketType: e.target.value })}
-                  className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
-                >
-                  <option value="Student Pass">Student Pass (₦1,000)</option>
-                  <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
-                  <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
-                  <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
-                </select>
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Registering..." : "Register Attendee"}
-                </Button>
-              </form>
-            </div>
-          )}
+        value={manualForm.ticketType}
+        onChange={(e) => setManualForm({ ...manualForm, ticketType: e.target.value })}
+        className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+      >
+        <option value="Student Pass">Student Pass (₦1,000)</option>
+        <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+        <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+        <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
+      </select>
+      
+      {manualForm.ticketType === "Researcher Premium" && (
+        <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={manualForm.wantsPreConference}
+              onChange={(e) => setManualForm({ ...manualForm, wantsPreConference: e.target.checked })}
+              className="h-4 w-4"
+            />
+            <span className="text-sm">Include Pre-Conference ticket (both tickets will be sent)</span>
+          </label>
+        </div>
+      )}
+      
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? "Registering..." : "Register Attendee"}
+      </Button>
+    </form>
+  </div>
+)}
 
           {/* Invite User */}
           {activeTab === "invite" && (
@@ -856,6 +990,140 @@ export default function AdminDashboardPage() {
               </form>
             </div>
           )}
+
+  {/* Pre-Conference Tab JSX: */}
+{activeTab === "preconference" && (
+  <div>
+    <h2 className="text-lg font-semibold mb-4">Pre-Conference Management</h2>
+    <p className="text-sm text-zinc-500 mb-4">
+      Manage pre-conference session invitations for Researcher Premium attendees.
+    </p>
+
+    {/* Sub-tabs */}
+    <div className="flex gap-2 mb-6">
+      <Button
+        variant={preConferenceSubTab === 'researcher' ? 'default' : 'outline'}
+        onClick={() => setPreConferenceSubTab('researcher')}
+      >
+        Researcher Premium ({researcherPremiumAttendees.length})
+      </Button>
+      <Button
+        variant={preConferenceSubTab === 'all' ? 'default' : 'outline'}
+        onClick={() => setPreConferenceSubTab('all')}
+      >
+        All Attendees ({allAttendees.length})
+      </Button>
+    </div>
+
+    {/* Researcher Premium Sub-tab */}
+    {preConferenceSubTab === 'researcher' && (
+      <div>
+        {loading ? (
+          <p className="text-zinc-500">Loading...</p>
+        ) : researcherPremiumAttendees.length === 0 ? (
+          <p className="text-zinc-500">No confirmed Researcher Premium attendees yet</p>
+        ) : (
+          <div className="space-y-3">
+            {researcherPremiumAttendees.map((attendee) => {
+              const canSendInvite = !attendee.preConferenceDeclinedDuringReg && 
+                                   !attendee.preConferenceQrCode &&
+                                   !attendee.wantsPreConference &&
+                                   !attendee.preConferenceInviteSent;
+              
+              return (
+                <div key={attendee._id} className="border rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="font-medium text-zinc-900">{attendee.name}</p>
+                    <p className="text-sm text-zinc-500">{attendee.email}</p>
+                    <div className="flex gap-2 mt-1">
+                      {attendee.wantsPreConference && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                          Wants Pre-Conference
+                        </span>
+                      )}
+                      {attendee.preConferenceDeclinedDuringReg && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                          Declined During Registration
+                        </span>
+                      )}
+                      {attendee.preConferenceQrCode && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                          Has Pre-Conference Ticket
+                        </span>
+                      )}
+                      {attendee.preConferenceInviteSent && !attendee.preConferenceQrCode && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">
+                          Invite Sent - {attendee.preConferenceInviteResponse || 'Pending'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Three dots menu */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedAttendee(attendee);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      View Details
+                    </Button>
+                    {canSendInvite && (
+                      <Button
+                        onClick={() => setConfirmState({ open: true, action: 'sendPreConferenceInvite', attendee })}
+                        className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                      >
+                        Send Pre-Conference Invite
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* All Attendees Sub-tab (read-only) */}
+    {preConferenceSubTab === 'all' && (
+      <div>
+        {loading ? (
+          <p className="text-zinc-500">Loading...</p>
+        ) : allAttendees.length === 0 ? (
+          <p className="text-zinc-500">No attendees yet</p>
+        ) : (
+          <div className="space-y-3">
+            {allAttendees.map((attendee) => (
+              <div key={attendee._id} className="border rounded-lg p-4 flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-medium text-zinc-900">{attendee.name}</p>
+                  <p className="text-sm text-zinc-500">{attendee.email}</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {attendee.ticketType} • {attendee.paymentStatus}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedAttendee(attendee)
+                    setIsModalOpen(true)
+                  }}
+                >
+                  View Details
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
+
+
         </div>
       </div>
     </div>
