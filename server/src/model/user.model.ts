@@ -61,6 +61,11 @@ export interface IUser extends Document {
   mainConferenceCheckedInAt?: Date;
   mainConferenceCheckedInBy?: Schema.Types.ObjectId;
   referralCode?: string;
+  wantsPreConference?: boolean; // Choice during registration
+  preConferenceDeclinedDuringReg?: boolean; // User said "no" during registration
+  preConferenceInviteSent?: boolean; // Admin sent pre-conference invite email
+  preConferenceInviteResponse?: 'pending' | 'yes' | 'no'; // Response to admin invite
+  preConferenceInviteRespondedAt?: Date; // When they responded
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -159,6 +164,25 @@ const UserSchema: Schema<IUser> = new Schema(
     referralCode: {
       type: String,
       trim: true,
+    },
+    wantsPreConference: {
+      type: Boolean,
+      default: undefined,
+    },
+    preConferenceDeclinedDuringReg: {
+      type: Boolean,
+      default: false,
+    },
+    preConferenceInviteSent: {
+      type: Boolean,
+      default: false,
+    },
+    preConferenceInviteResponse: {
+      type: String,
+      enum: ['pending', 'yes', 'no'],
+    },
+    preConferenceInviteRespondedAt: {
+      type: Date,
     },
     paymentStatus: {
       type: String,

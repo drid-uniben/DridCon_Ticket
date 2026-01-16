@@ -8,6 +8,7 @@ import {
   registrationConfirmationTemplate,
   preConferenceTicketTemplate,
   declineRegistrationTemplate,
+  preConferenceInviteTemplate,
 } from '../templates/emails';
 
 validateEnv();
@@ -114,14 +115,15 @@ class EmailService {
   async sendRegistrationConfirmation(
     email: string,
     name: string,
-    ticketType?: string
+    ticketType?: string,
+    wantsPreConference?: boolean
   ): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: this.emailFrom,
         to: email,
         subject: 'DridCon Registration Confirmation',
-        html: registrationConfirmationTemplate(name, ticketType),
+        html: registrationConfirmationTemplate(name, ticketType, wantsPreConference),
       });
       logger.info(`Registration confirmation email sent to: ${email}`);
     } catch (error) {
@@ -171,6 +173,30 @@ class EmailService {
     } catch (error) {
       logger.error(
         'Failed to send registration decline email:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  async sendPreConferenceInvite(
+    email: string,
+    name: string,
+    inviteToken: string
+  ): Promise<void> {
+    const responseUrl = `${this.frontendUrl}/preconference-response?token=${inviteToken}`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.emailFrom,
+        to: email,
+        subject: 'DridCon Pre-Conference Session - Special Invitation',
+        html: preConferenceInviteTemplate(name, responseUrl),
+      });
+      logger.info(`Pre-conference invite sent to: ${email}`);
+    } catch (error) {
+      logger.error(
+        'Failed to send pre-conference invite:',
         error instanceof Error ? error.message : 'Unknown error'
       );
       throw error;

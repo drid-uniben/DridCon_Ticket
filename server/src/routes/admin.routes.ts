@@ -19,10 +19,7 @@ router.get('/agents', adminController.getAgents);
 // Attendee Management
 router.post('/attendees/manual', adminController.manualRegisterAttendee);
 router.post('/attendees/invite', adminController.inviteAttendee);
-router.get(
-  '/attendees/pending',
-  adminController.reviewSelfRegisteredAttendees
-);
+router.get('/attendees/pending', adminController.reviewSelfRegisteredAttendees);
 router.post(
   '/attendees/:attendeeId/approve',
   adminController.approveRegistration
@@ -36,5 +33,14 @@ router.get('/attendees', adminController.getAllAttendees);
 // Dashboard
 router.get('/dashboard', adminController.getDashboardData);
 
-export default router;
+router.get(
+  '/attendees/researcher-premium',
+  adminController.getResearcherPremiumAttendees
+);
+router.post(
+  '/attendees/send-preconf-invite',
+  adminController.sendPreConferenceInvite
+);
 
+
+export default router;

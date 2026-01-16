@@ -22,14 +22,9 @@ export default function FormPage() {
   const [loading, setLoading] = useState(false)
   const [referralCode, setReferralCode] = useState("")
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [wantsPreConference, setWantsPreConference] = useState<string>("")
 
   const descriptionSections: DescriptionSection[] = [
-    {
-      heading: "Announcements",
-      items: [
-        "The Student Pass (₦1,000 – Early Bird) is ending today, Thursday, by 11:59 pm.",
-      ],
-    },
     {
       heading: "Overview",
       text:
@@ -46,6 +41,7 @@ export default function FormPage() {
     {
       heading: "Student Pass (₦1,000 – Early Bird)",
       items: [
+        "For undergraduate students",
         "Access to all keynote sessions, exhibitions, and panel discussions",
         "Certificate of Attendance",
         "Networking opportunities with researchers and innovators",
@@ -53,7 +49,7 @@ export default function FormPage() {
       ],
     },
     {
-      heading: "Researcher Regular (₦3,000 – Early Bird)",
+      heading: "Standard Package (₦3,000) - For Researchers & Postgraduates",
       items: [
         "Access to conference sessions, exhibitions, and panel discussions",
         "Certificate of Participation",
@@ -62,12 +58,12 @@ export default function FormPage() {
       ],
     },
     {
-      heading: "Researcher Premium (₦6,000 – Early Bird)",
+      heading: "Premium Package (₦6,000) - For Researchers & Postgraduates",
       items: [
         "All Regular benefits, plus VIP seating at keynotes and panels",
         "Premium conference package with branded keepsakes and refreshments",
         "Recognition in the official conference brochure as a Premium Delegate",
-        "Lunch included",
+        "OPTIONAL: Access to Pre-Conference Session (January 20) - You can choose whether to attend during registration",
       ],
     },
     {
@@ -82,7 +78,7 @@ export default function FormPage() {
       ],
     },
     {
-      heading: "Pre-Conference Workshop Theme: Commercializing Research",
+      heading: "Pre-Conference Workshop Theme: Commercializing University Research for Economic Impact",
       text:
         "The Lecturer Premium pre-conference session focuses on bridging the gap between academic research and economic impact. This exclusive workshop equips academic staff with practical strategies and insights on translating research findings into commercially viable innovations. Learn how to navigate the commercialization landscape, protect intellectual property, and create sustainable value from your research.",
     },
@@ -98,7 +94,7 @@ export default function FormPage() {
       heading: "Registration Process",
       items: [
         "Upload your transfer receipt using the provided form or payment link",
-        "Once payment is confirmed, a registration link will be emailed to you",
+        "Once payment is confirmed, your ticket will be emailed to you",
       ],
     },
     {
@@ -116,6 +112,10 @@ export default function FormPage() {
     if (!phone) missingFields.push("Phone Number")
     if (!designation) missingFields.push("Designation")
     if (!file) missingFields.push("Payment Receipt")
+
+    if (ticket === "Researcher Premium" && !wantsPreConference) {
+    missingFields.push("Pre-Conference Attendance Choice")
+  }
 
     if (missingFields.length > 0) {
       setMessage({
@@ -141,6 +141,7 @@ export default function FormPage() {
         designation,
         department,
         referralCode,
+        wantsPreConference: ticket === "Researcher Premium" ? wantsPreConference === "yes" : undefined,
         paymentProof: file || undefined,
       })
 
@@ -153,6 +154,7 @@ export default function FormPage() {
       setDesignation("")
       setDepartment("")
       setReferralCode("")
+      setWantsPreConference("")
       setFile(null)
     } catch (err) {
       let errorMessage = "Submission failed. Try again."
@@ -201,12 +203,31 @@ export default function FormPage() {
               value={ticket}
               onChange={setTicket}
               options={[
-                { label: "Student Pass (₦1,000)", value: "Student Pass" },
-                { label: "Researcher Standard (₦3,000)", value: "Researcher Standard" },
-                { label: "Researcher Premium (₦6,000)", value: "Researcher Premium" },
-                { label: "Lecturer Premium (₦6,000)", value: "Lecturer Premium" },
+                { label: "Student Pass (₦1,000) - For undergraduates", value: "Student Pass" },
+                { label: "Standard Package (₦3,000) - For Researchers & Postgraduates", value: "Researcher Standard" },
+                { label: "Premium Package (₦6,000) - For Researchers & Postgraduates with Pre-Conference access", value: "Researcher Premium" },
+                { label: "Lecturer Premium (₦6,000) - Lecturers ONLY", value: "Lecturer Premium" },
               ]}
             />
+
+            {/* Add pre-conference option for Researcher Premium */}
+  {ticket === "Researcher Premium" && (
+    <div className="mt-4 p-4 rounded-xl bg-purple-50 border border-purple-200">
+      <p className="text-sm font-medium text-zinc-900 mb-3">
+        Would you like to attend the Pre-Conference Session on January 20, 2026?
+      </p>
+      <RadioField
+        label=""
+        name="wantsPreConference"
+        value={wantsPreConference}
+        onChange={setWantsPreConference}
+        options={[
+          { label: "Yes, I want to attend the Pre-Conference", value: "yes" },
+          { label: "No, Main Conference only", value: "no" },
+        ]}
+      />
+    </div>
+  )}
           </FormCard>
 
           <FormCard heading="Referral Code (optional)" description="Enter a referral code if you have one.">

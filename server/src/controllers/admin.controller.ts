@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { Response } from 'express';
 import asyncHandler from '../utils/asyncHandler';
 import logger from '../utils/logger';
@@ -82,8 +83,15 @@ class AdminController {
 
   manualRegisterAttendee = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
-      const { name, email, phoneNumber, ticketType, designation, department } =
-        req.body;
+      const {
+        name,
+        email,
+        phoneNumber,
+        ticketType,
+        designation,
+        department,
+        wantsPreConference,
+      } = req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError(
@@ -104,8 +112,12 @@ class AdminController {
         );
       }
 
-      const { token, filePath } = await generateQRCode({ email });
+      const isLecturerPremium = ticketType === TicketType.LECTURER_PREMIUM;
+      const isResearcherPremiumWithPreConference =
+        ticketType === TicketType.RESEARCHER_PREMIUM &&
+        wantsPreConference === true;
 
+      // Create user first
       const attendee = await User.create({
         name,
         email,
@@ -113,15 +125,54 @@ class AdminController {
         ticketType,
         designation,
         department,
-        qrCode: token,
+        wantsPreConference:
+          ticketType === TicketType.RESEARCHER_PREMIUM
+            ? wantsPreConference
+            : undefined,
+        preConferenceDeclinedDuringReg:
+          ticketType === TicketType.RESEARCHER_PREMIUM && !wantsPreConference,
         paymentStatus: PaymentStatus.CONFIRMED,
         role: UserRole.USER,
         checkInStatus: CheckInStatus.NOT_CHECKED_IN,
         ticketsent: true,
       });
 
-      const qrCodeUrl = `${process.env.API_URL}${filePath}`;
-      await emailService.sendTicketWithQR(email, name, qrCodeUrl, ticketType);
+      // Send both tickets for Lecturer Premium or Researcher Premium with pre-conference
+      if (isLecturerPremium || isResearcherPremiumWithPreConference) {
+        // Send pre-conference ticket
+        const preConf = await generateQRCode({ email }, 'pre-conference');
+        attendee.preConferenceQrCode = preConf.token;
+
+        const preConfUrl = `${process.env.API_URL}${preConf.filePath}`;
+        await emailService.sendPreConferenceTicket(
+          email,
+          name,
+          preConfUrl,
+          ticketType
+        );
+
+        // Send main conference ticket
+        const mainConf = await generateQRCode({ email }, 'main-conference');
+        attendee.mainConferenceQrCode = mainConf.token;
+
+        const mainConfUrl = `${process.env.API_URL}${mainConf.filePath}`;
+        await emailService.sendTicketWithQR(
+          email,
+          name,
+          mainConfUrl,
+          ticketType
+        );
+
+        await attendee.save();
+      } else {
+        // Single ticket for others
+        const { token, filePath } = await generateQRCode({ email });
+        attendee.qrCode = token;
+        await attendee.save();
+
+        const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+        await emailService.sendTicketWithQR(email, name, qrCodeUrl, ticketType);
+      }
 
       res.status(201).json({
         success: true,
@@ -162,7 +213,7 @@ class AdminController {
         inviteToken,
         inviteTokenExpires,
         role: UserRole.USER,
-        isActive: false, // User is not active until they complete registration
+        isActive: false,
       });
 
       await emailService.sendAttendeeInvite(email, inviteToken);
@@ -219,11 +270,13 @@ class AdminController {
 
       const isLecturerPremium =
         attendee.ticketType === TicketType.LECTURER_PREMIUM;
+      const isResearcherPremiumWithPreConference =
+        attendee.ticketType === TicketType.RESEARCHER_PREMIUM &&
+        attendee.wantsPreConference === true;
 
-      // Handle Lecturer Premium approval
-      if (isLecturerPremium) {
+      // Handle Lecturer Premium OR Researcher Premium with pre-conference
+      if (isLecturerPremium || isResearcherPremiumWithPreConference) {
         if (sessionType === 'pre-conference') {
-          // Generate pre-conference QR
           const { token, filePath } = await generateQRCode(
             { email: attendee.email },
             'pre-conference'
@@ -248,14 +301,13 @@ class AdminController {
             data: attendee,
           });
         } else if (sessionType === 'main-conference') {
-          // Generate main conference QR
           const { token, filePath } = await generateQRCode(
             { email: attendee.email },
             'main-conference'
           );
 
           attendee.mainConferenceQrCode = token;
-          attendee.paymentStatus = PaymentStatus.CONFIRMED; // Mark as fully approved
+          attendee.paymentStatus = PaymentStatus.CONFIRMED;
           await attendee.save();
 
           const qrCodeUrl = `${process.env.API_URL}${filePath}`;
@@ -278,7 +330,7 @@ class AdminController {
           });
         } else {
           throw new BadRequestError(
-            'Session type must be specified for Lecturer Premium tickets.'
+            'Session type must be specified for tickets requiring separate sessions.'
           );
         }
       } else {
@@ -312,6 +364,84 @@ class AdminController {
           data: attendee,
         });
       }
+    }
+  );
+
+  // Add new controller methods for pre-conference management:
+
+  getResearcherPremiumAttendees = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new ForbiddenError('Only administrators can view this data.');
+      }
+
+      const attendees = await User.find({
+        role: UserRole.USER,
+        ticketType: TicketType.RESEARCHER_PREMIUM,
+        paymentStatus: PaymentStatus.CONFIRMED,
+      }).sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        count: attendees.length,
+        data: attendees,
+      });
+    }
+  );
+
+  sendPreConferenceInvite = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const { attendeeId } = req.body;
+
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new ForbiddenError('Only administrators can send invites.');
+      }
+
+      const attendee = await User.findById(attendeeId);
+      if (!attendee) {
+        throw new NotFoundError('Attendee not found.');
+      }
+
+      if (attendee.ticketType !== TicketType.RESEARCHER_PREMIUM) {
+        throw new BadRequestError(
+          'Only Researcher Premium attendees can receive pre-conference invites.'
+        );
+      }
+
+      // Don't send if they already declined during registration
+      if (attendee.preConferenceDeclinedDuringReg) {
+        throw new BadRequestError(
+          'This attendee declined pre-conference during registration.'
+        );
+      }
+
+      // Don't send if they already have pre-conference ticket
+      if (attendee.preConferenceQrCode) {
+        throw new BadRequestError(
+          'This attendee already has a pre-conference ticket.'
+        );
+      }
+
+      // Generate invite token
+      const inviteToken = crypto.randomBytes(32).toString('hex');
+
+      attendee.preConferenceInviteSent = true;
+      attendee.preConferenceInviteResponse = 'pending';
+      attendee.inviteToken = inviteToken;
+      attendee.inviteTokenExpires = new Date(Date.now() + 3600000 * 24 * 7); // 7 days
+      await attendee.save();
+
+      // Send email with invite
+      await emailService.sendPreConferenceInvite(
+        attendee.email,
+        attendee.name,
+        inviteToken
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Pre-conference invite sent successfully.',
+      });
     }
   );
 
