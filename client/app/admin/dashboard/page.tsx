@@ -667,43 +667,47 @@ export default function AdminDashboardPage() {
           Close
         </Button>
         
-        {selectedAttendee.ticketType === 'Lecturer Premium' || 
-         (selectedAttendee.ticketType === 'Researcher Premium' && selectedAttendee.wantsPreConference) ? (
+        {activeTab !== 'preconference' && (
           <>
-            {!selectedAttendee.preConferenceQrCode && (
+            {selectedAttendee.ticketType === 'Lecturer Premium' || 
+             (selectedAttendee.ticketType === 'Researcher Premium' && selectedAttendee.wantsPreConference) ? (
+              <>
+                {!selectedAttendee.preConferenceQrCode && (
+                  <Button
+                    onClick={() => setConfirmState({ 
+                      open: true, 
+                      action: 'approve', 
+                      attendee: selectedAttendee,
+                      sessionType: 'pre-conference' 
+                    })}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Approve Pre-Conference
+                  </Button>
+                )}
+                {!selectedAttendee.mainConferenceQrCode && (
+                  <Button
+                    onClick={() => setConfirmState({ 
+                      open: true, 
+                      action: 'approve', 
+                      attendee: selectedAttendee,
+                      sessionType: 'main-conference' 
+                    })}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Approve Main Conference
+                  </Button>
+                )}
+              </>
+            ) : (
               <Button
-                onClick={() => setConfirmState({ 
-                  open: true, 
-                  action: 'approve', 
-                  attendee: selectedAttendee,
-                  sessionType: 'pre-conference' 
-                })}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Approve Pre-Conference
-              </Button>
-            )}
-            {!selectedAttendee.mainConferenceQrCode && (
-              <Button
-                onClick={() => setConfirmState({ 
-                  open: true, 
-                  action: 'approve', 
-                  attendee: selectedAttendee,
-                  sessionType: 'main-conference' 
-                })}
+                onClick={() => setConfirmState({ open: true, action: 'approve', attendee: selectedAttendee })}
                 className="bg-green-600 hover:bg-green-700"
               >
-                Approve Main Conference
+                Approve
               </Button>
             )}
           </>
-        ) : (
-          <Button
-            onClick={() => setConfirmState({ open: true, action: 'approve', attendee: selectedAttendee })}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Approve
-          </Button>
         )}   
                   </div>
                 </div>
