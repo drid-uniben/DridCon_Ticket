@@ -192,15 +192,69 @@ class ScanController {
         throw new ForbiddenError('Only agents can view their scan history.');
       }
 
-      const history = await User.find({
-        checkedInBy: agent._id as any,
-        checkInStatus: CheckInStatus.CHECKED_IN,
+      // Find all users that this agent has checked in, in any capacity
+      const usersCheckedInByAgent = await User.find({
+        $or: [
+          { checkedInBy: agent._id },
+          { preConferenceCheckedInBy: agent._id },
+          { mainConferenceCheckedInBy: agent._id },
+        ],
       })
-        .select(
-          '_id name email ticketType checkedInAt checkInStatus checkedInBy'
-        )
-        .populate('checkedInBy', 'name')
-        .sort({ checkedInAt: -1 });
+        .populate('checkedInBy preConferenceCheckedInBy mainConferenceCheckedInBy', 'name')
+        .sort({ 'updatedAt': -1 });
+
+      const history: any[] = [];
+
+      // Process each user to create specific history entries for each relevant check-in
+      usersCheckedInByAgent.forEach(user => {
+        // Check for standard/legacy check-in
+        if (user.checkedInBy && user.checkedInBy.toString() === agent._id.toString()) {
+          history.push({
+            _id: `${user._id}-main-legacy`,
+            name: user.name,
+            email: user.email,
+            ticketType: user.ticketType,
+            checkedInAt: user.checkedInAt,
+            checkInStatus: user.checkInStatus,
+            checkedInBy: user.checkedInBy,
+            sessionType: 'Main Conference',
+          });
+        }
+        
+        // Check for pre-conference check-in
+        if (user.preConferenceCheckedInBy && user.preConferenceCheckedInBy.toString() === agent._id.toString()) {
+          history.push({
+            _id: `${user._id}-preconf`,
+            name: user.name,
+            email: user.email,
+            ticketType: user.ticketType,
+            checkedInAt: user.preConferenceCheckedInAt,
+            checkInStatus: user.preConferenceCheckInStatus,
+            checkedInBy: user.preConferenceCheckedInBy,
+            sessionType: 'Pre-Conference',
+          });
+        }
+
+        // Check for main conference check-in (for premium tickets)
+        if (user.mainConferenceCheckedInBy && user.mainConferenceCheckedInBy.toString() === agent._id.toString()) {
+          // Avoid duplicating the standard check-in if it's the same event
+          if (!user.checkedInBy || user.checkedInBy.toString() !== agent._id.toString()) {
+            history.push({
+              _id: `${user._id}-main-premium`,
+              name: user.name,
+              email: user.email,
+              ticketType: user.ticketType,
+              checkedInAt: user.mainConferenceCheckedInAt,
+              checkInStatus: user.mainConferenceCheckInStatus,
+              checkedInBy: user.mainConferenceCheckedInBy,
+              sessionType: 'Main Conference',
+            });
+          }
+        }
+      });
+      
+      // Sort the combined history by check-in time, descending
+      history.sort((a, b) => new Date(b.checkedInAt).getTime() - new Date(a.checkedInAt).getTime());
 
       const totalScans = history.length;
       const successfulCheckIns = history.filter(

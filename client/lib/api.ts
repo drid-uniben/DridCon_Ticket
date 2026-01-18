@@ -46,7 +46,7 @@ export const getToken = async (key: string): Promise<string | null> => {
 
 export const saveToken = async (
   key: string,
-  value: string
+  value: string,
 ): Promise<boolean> => {
   try {
     const db = await initDB();
@@ -133,7 +133,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (err) => Promise.reject(err)
+  (err) => Promise.reject(err),
 );
 
 // Response handler for token refresh
@@ -168,7 +168,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(err);
-  }
+  },
 );
 
 // Auth API
@@ -238,7 +238,7 @@ export const adminApi = {
     data: {
       ticketType: string;
       sessionType?: "pre-conference" | "main-conference";
-    }
+    },
   ) => (await api.post(`/admin/attendees/${id}/approve`, data)).data,
   declineRegistration: async (id: string) =>
     (await api.post(`/admin/attendees/${id}/decline`)).data,
@@ -249,6 +249,18 @@ export const adminApi = {
 
   sendPreConferenceInvite: async (data: { attendeeId: string }) =>
     (await api.post("/admin/attendees/send-preconf-invite", data)).data,
+  quickRegisterWithTickets: async (data: {
+    name?: string;
+    email: string;
+    ticketType: string;
+    sendBothTickets?: boolean;
+  }) => (await api.post("/admin/attendees/quick-with-tickets", data)).data,
+  instantCheckIn: async (data: {
+    name?: string;
+    email: string;
+    ticketType: string;
+    sessionType?: 'pre-conference' | 'main-conference';
+  }) => (await api.post("/admin/attendees/instant-checkin", data)).data,
 };
 
 // Scan API

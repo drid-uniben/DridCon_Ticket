@@ -41,6 +41,11 @@ router.post(
   '/attendees/send-preconf-invite',
   adminController.sendPreConferenceInvite
 );
+router.post(
+  '/attendees/quick-with-tickets',
+  adminController.quickRegisterWithTickets
+);
 
+router.post('/attendees/instant-checkin', adminController.instantCheckIn);
 
 export default router;

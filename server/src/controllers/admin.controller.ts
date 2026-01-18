@@ -126,9 +126,7 @@ class AdminController {
         designation,
         department,
         wantsPreConference:
-          ticketType === TicketType.RESEARCHER_PREMIUM
-            ? wantsPreConference
-            : undefined,
+          ticketType === TicketType.RESEARCHER_PREMIUM ? wantsPreConference : undefined,
         preConferenceDeclinedDuringReg:
           ticketType === TicketType.RESEARCHER_PREMIUM && !wantsPreConference,
         paymentStatus: PaymentStatus.CONFIRMED,
@@ -525,6 +523,181 @@ class AdminController {
           totalAgentsCount,
           pendingApprovalsCount,
         },
+      });
+    }
+  );
+
+  // Quick registration WITH tickets (sends QR codes)
+  quickRegisterWithTickets = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const { name, email, ticketType, sendBothTickets } = req.body;
+
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new ForbiddenError(
+          'Only administrators can use quick registration.'
+        );
+      }
+
+      if (!email || !ticketType) {
+        throw new BadRequestError('Email and ticket type are required.');
+      }
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw new BadRequestError(
+          'An attendee with this email already exists.'
+        );
+      }
+
+      // Use placeholder values for required fields
+      const attendee = await User.create({
+        name: name || 'Quick Registration',
+        email,
+        phoneNumber: 'N/A',
+        ticketType,
+        designation: 'Walk-in',
+        department: 'N/A',
+        paymentStatus: PaymentStatus.CONFIRMED,
+        role: UserRole.USER,
+        checkInStatus: CheckInStatus.NOT_CHECKED_IN,
+        ticketsent: true,
+      });
+
+      const isLecturerPremium = ticketType === TicketType.LECTURER_PREMIUM;
+      const needsBothTickets =
+        isLecturerPremium ||
+        (ticketType === TicketType.RESEARCHER_PREMIUM && sendBothTickets);
+
+      if (needsBothTickets) {
+        // Send both tickets
+        const preConf = await generateQRCode({ email }, 'pre-conference');
+        attendee.preConferenceQrCode = preConf.token;
+        const preConfUrl = `${process.env.API_URL}${preConf.filePath}`;
+        await emailService.sendPreConferenceTicket(
+          email,
+          'Attendee',
+          preConfUrl,
+          ticketType
+        );
+
+        const mainConf = await generateQRCode({ email }, 'main-conference');
+        attendee.mainConferenceQrCode = mainConf.token;
+        const mainConfUrl = `${process.env.API_URL}${mainConf.filePath}`;
+        await emailService.sendTicketWithQR(
+          email,
+          'Attendee',
+          mainConfUrl,
+          ticketType
+        );
+
+        await attendee.save();
+      } else {
+        // Single ticket
+        const { token, filePath } = await generateQRCode({ email });
+        attendee.qrCode = token;
+        await attendee.save();
+
+        const qrCodeUrl = `${process.env.API_URL}${filePath}`;
+        await emailService.sendTicketWithQR(
+          email,
+          'Attendee',
+          qrCodeUrl,
+          ticketType
+        );
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Quick registration completed and tickets sent.',
+        data: attendee,
+      });
+    }
+  );
+
+  // Instant check-in WITHOUT tickets (no emails sent, immediate check-in)
+  instantCheckIn = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const { name, email, ticketType, sessionType } = req.body; // sessionType is new
+
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new ForbiddenError(
+          'Only administrators can use instant check-in.'
+        );
+      }
+
+      if (!email || !ticketType) {
+        throw new BadRequestError('Email and ticket type are required.');
+      }
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw new BadRequestError(
+          'An attendee with this email already exists.'
+        );
+      }
+
+      const isLecturerPremium = ticketType === TicketType.LECTURER_PREMIUM;
+      const isResearcherPremium = ticketType === TicketType.RESEARCHER_PREMIUM;
+
+      // For non-premium tickets, assume main-conference check-in
+      const effectiveSessionType = (isLecturerPremium || isResearcherPremium) ? sessionType : 'main-conference';
+
+      if ((isLecturerPremium || isResearcherPremium) && !effectiveSessionType) {
+        throw new BadRequestError('Session type is required for premium ticket types.');
+      }
+
+      let attendeeData: any = {
+        name: name || 'Instant Check-in',
+        email,
+        phoneNumber: 'N/A',
+        ticketType,
+        designation: 'Walk-in',
+        department: 'N/A',
+        paymentStatus: PaymentStatus.CONFIRMED,
+        role: UserRole.USER,
+        ticketsent: false, // Will be set to true if main conf ticket is sent
+        checkInStatus: CheckInStatus.NOT_CHECKED_IN, // Default, will be updated
+      };
+
+      if (effectiveSessionType === 'pre-conference') {
+        // Check in for pre-conference
+        attendeeData.preConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
+        attendeeData.preConferenceCheckedInAt = new Date();
+        attendeeData.preConferenceCheckedInBy = (req.user._id as any);
+
+        // Send main conference ticket
+        const mainConf = await generateQRCode({ email }, 'main-conference');
+        attendeeData.mainConferenceQrCode = mainConf.token;
+        attendeeData.ticketsent = true;
+
+        const mainConfUrl = `${process.env.API_URL}${mainConf.filePath}`;
+        await emailService.sendTicketWithQR(
+          email,
+          attendeeData.name,
+          mainConfUrl,
+          ticketType
+        );
+      } else {
+        // Default (or selected) main-conference check-in
+        attendeeData.checkInStatus = CheckInStatus.CHECKED_IN;
+        attendeeData.checkedInAt = new Date();
+        attendeeData.checkedInBy = (req.user._id as any);
+
+        if (isLecturerPremium) {
+          // Explicitly set mainConferenceCheckInStatus for Lecturer Premium
+          attendeeData.mainConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
+          attendeeData.mainConferenceCheckedInAt = new Date();
+          attendeeData.mainConferenceCheckedInBy = (req.user._id as any);
+        }
+        // No tickets sent in this case
+      }
+
+      const attendee = await User.create(attendeeData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Attendee registered and checked in successfully.',
+        data: attendee,
       });
     }
   );

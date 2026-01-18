@@ -52,49 +52,34 @@ export default function AgentDashboardPage() {
 
 
 
-  // Load scan history from server
-  useEffect(() => {
-    const fetchScanHistory = async () => {
-      try {
-        const response = await scanApi.getScanHistory()
-        const { history, stats } = response.data
-        
-        const formattedHistory: ScanResult[] = history.map((item: any) => ({
-          id: item._id,
-          attendeeName: item.name || "Unknown",
-          email: item.email || "",
-          ticketType: item.ticketType || "",
-          status: item.checkInStatus === "checked-in" ? "success" : "invalid",
-          scannedAt: item.checkedInAt,
-          scannedBy: item.checkedInBy?.name,
-          sessionType: item.sessionType,
-        }))
-        setScanHistory(formattedHistory)
-        setStats(stats)
-      } catch (error) {
-        console.error("Failed to fetch scan history:", error)
-      }
+  const fetchScanHistory = useCallback(async () => {
+    try {
+      const response = await scanApi.getScanHistory()
+      const { history, stats } = response.data
+      
+      const formattedHistory: ScanResult[] = history.map((item: any) => ({
+        id: item._id,
+        attendeeName: item.name || "Unknown",
+        email: item.email || "",
+        ticketType: item.ticketType || "",
+        status: item.checkInStatus === "checked-in" ? "success" : "invalid", // The backend now sends the correct status for the session
+        scannedAt: item.checkedInAt,
+        scannedBy: item.checkedInBy?.name,
+        sessionType: item.sessionType, // This now comes directly from the backend
+      }))
+      setScanHistory(formattedHistory)
+      setStats(stats)
+    } catch (error) {
+      console.error("Failed to fetch scan history:", error)
     }
-    
+  }, [])
+
+  // Load scan history from server on initial load
+  useEffect(() => {
     if (user && user.role === "agent") {
       fetchScanHistory()
     }
-  }, [user])
-  
-  const addToHistory = useCallback(
-    (result: ScanResult) => {
-      const updated = [result, ...scanHistory].slice(0, 50);
-      setScanHistory(updated);
-      // Update stats locally
-      setStats(prevStats => ({
-        totalScans: prevStats.totalScans + 1,
-        successfulCheckIns: result.status === 'success' 
-          ? prevStats.successfulCheckIns + 1 
-          : prevStats.successfulCheckIns
-      }));
-    },
-    [scanHistory]
-  );
+  }, [user, fetchScanHistory])
 
   // Scan handler for camera scan
   const handleCameraScan = useCallback(async (token: string) => {
@@ -106,7 +91,7 @@ export default function AgentDashboardPage() {
       const data = res.data || res
 
       const result: ScanResult = {
-        id: Date.now().toString(),
+        id: Date.now().toString(), // Temporary ID, will be replaced by fetch
         attendeeName: data?.name || "Unknown",
         email: data?.email || "",
         ticketType: data?.ticketType || "",
@@ -114,9 +99,7 @@ export default function AgentDashboardPage() {
         scannedAt: new Date().toISOString(),
         sessionType: data?.sessionType || "",
       }
-
       setLastResult(result)
-      addToHistory(result)
     } catch (err: any) {
       let status: "already_scanned" | "invalid" = "invalid"
       let scannedByAgent: string | undefined = undefined
@@ -140,7 +123,7 @@ export default function AgentDashboardPage() {
       }
 
       const result: ScanResult = {
-        id: Date.now().toString(),
+        id: Date.now().toString(), // Temporary ID
         attendeeName: attendeeName || "N/A",
         email: "",
         ticketType: "",
@@ -150,13 +133,13 @@ export default function AgentDashboardPage() {
         checkedInAt: checkedInAtTime,
         sessionType,
       }
-
       setLastResult(result)
-      addToHistory(result)
     } finally {
       setScanning(false)
+      // Always re-fetch history to get the authoritative state from the server
+      fetchScanHistory()
     }
-  }, [addToHistory])
+  }, [fetchScanHistory])
 
   useEffect(() => {
     if (!isScannerOpen) {

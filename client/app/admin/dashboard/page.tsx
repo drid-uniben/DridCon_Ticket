@@ -63,9 +63,29 @@ export default function AdminDashboardPage() {
   const [imageMimeType, setImageMimeType] = useState<string | null>(null)
   const [filter, setFilter] = useState('all')
   const [attendeesFilter, setAttendeesFilter] = useState('all')
-  const [preConferenceSubTab, setPreConferenceSubTab] = useState<'researcher' | 'all'>('researcher')
+  const [preConferenceSubTab, setPreConferenceSubTab] = useState<'researcher' | 'referral' | 'all'>('researcher')
   const [researcherPremiumAttendees, setResearcherPremiumAttendees] = useState<Attendee[]>([])
+  
+  const [manualSubTab, setManualSubTab] = useState<'full' | 'with-tickets' | 'instant'>('full')
+  const [quickForm, setQuickForm] = useState({
+    name: "",
+    email: "",
+    ticketType: "Student Pass",
+    sendBothTickets: false,
+  })
+type InstantFormState = {
+  name: string;
+  email: string;
+  ticketType: string;
+  sessionType: "pre-conference" | "main-conference";
+}
 
+const [instantForm, setInstantForm] = useState<InstantFormState>({
+  name: "",
+  email: "",
+  ticketType: "Student Pass",
+  sessionType: "pre-conference",
+})
 
   const [confirmState, setConfirmState] = useState<
     | { open: false }
@@ -238,15 +258,25 @@ export default function AdminDashboardPage() {
 
   // Fetch data based on active tab
   useEffect(() => {
-    fetchDashboardData()
+    fetchDashboardData().catch((error) => {
+      setMessage({ type: "error", text: `Failed to load dashboard data: ${error.message}` })
+    })
     if (activeTab === "pending" || activeTab === "attendees") {
-      fetchAttendees()
+      fetchAttendees().catch((error) => {
+        setMessage({ type: "error", text: `Failed to load attendees: ${error.message}` })
+      })
     } else if (activeTab === "agents") {
-      fetchAgents()
+      fetchAgents().catch((error) => {
+        setMessage({ type: "error", text: `Failed to load agents: ${error.message}` })
+      })
     } else if (activeTab === "preconference") {
-    fetchResearcherPremium()
-    fetchAttendees() // For "all" sub-tab
-  }
+      fetchResearcherPremium().catch((error) => {
+        setMessage({ type: "error", text: `Failed to load researcher premium attendees: ${error.message}` })
+      })
+      fetchAttendees().catch((error) => {
+        setMessage({ type: "error", text: `Failed to load attendees: ${error.message}` })
+      }) // For "all" sub-tab
+    }
   }, [activeTab, fetchAttendees, fetchAgents, fetchDashboardData, fetchResearcherPremium])
 
   async function approveAttendee(id: string, ticketType: string, sessionType?: 'pre-conference' | 'main-conference') {
@@ -317,6 +347,38 @@ export default function AdminDashboardPage() {
     fetchAttendees()
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Failed to register attendee"
+    setMessage({ type: "error", text: errorMessage })
+  } finally {
+    setLoading(false)
+  }
+}
+
+async function handleQuickWithTickets(e: React.FormEvent) {
+  e.preventDefault()
+  setLoading(true)
+  try {
+    await adminApi.quickRegisterWithTickets(quickForm)
+    setMessage({ type: "success", text: "Attendee registered! Tickets sent via email." })
+    setQuickForm({ name: "", email: "", ticketType: "Student Pass", sendBothTickets: false })
+    fetchAttendees()
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to register attendee"
+    setMessage({ type: "error", text: errorMessage })
+  } finally {
+    setLoading(false)
+  }
+}
+
+async function handleInstantCheckIn(e: React.FormEvent) {
+  e.preventDefault()
+  setLoading(true)
+  try {
+    await adminApi.instantCheckIn(instantForm)
+    setMessage({ type: "success", text: "Attendee registered and checked in successfully!" })
+    setInstantForm({ name: "", email: "", ticketType: "Student Pass", sessionType: "pre-conference" })
+    fetchAttendees()
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to check in attendee"
     setMessage({ type: "error", text: errorMessage })
   } finally {
     setLoading(false)
@@ -859,11 +921,37 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          {/* Manual Register */}
+          {/* Manual Register with Sub-tabs */}
+
           {activeTab === "manual" && (
+  <div>
+    <h2 className="text-lg font-semibold mb-4">Manual Registration</h2>
+    
+    {/* Sub-tabs */}
+    <div className="flex gap-2 mb-6">
+      <Button
+        variant={manualSubTab === 'full' ? 'default' : 'outline'}
+        onClick={() => setManualSubTab('full')}
+      >
+        With Full Info
+      </Button>
+      <Button
+        variant={manualSubTab === 'with-tickets' ? 'default' : 'outline'}
+        onClick={() => setManualSubTab('with-tickets')}
+      >
+        Quick (With Tickets)
+      </Button>
+      <Button
+        variant={manualSubTab === 'instant' ? 'default' : 'outline'}
+        onClick={() => setManualSubTab('instant')}
+      >
+        Instant (No Tickets)
+      </Button>
+    </div>
+
+          {manualSubTab === 'full' && (
             <div>
-              <h2 className="text-lg font-semibold mb-4">Manual Registration</h2>
-              <p className="text-sm text-zinc-500 mb-4">Register an attendee directly. They will receive their QR code via email.</p>
+              <p className="text-sm text-zinc-500 mb-4">Register an attendee with complete information. They will receive their QR code via email.</p>
               <form onSubmit={handleManualRegister} className="space-y-4 max-w-md">
                 <input
                   type="text"
@@ -933,6 +1021,117 @@ export default function AdminDashboardPage() {
         {loading ? "Registering..." : "Register Attendee"}
       </Button>
     </form>
+  </div>
+)}
+
+{/* Quick Registration With Tickets */}
+    {manualSubTab === 'with-tickets' && (
+      <div>
+        <p className="text-sm text-zinc-500 mb-4">Quick registration with tickets sent via email. Minimal info required.</p>
+        <form onSubmit={handleQuickWithTickets} className="space-y-4 max-w-md">
+          <input
+            type="text"
+            value={quickForm.name}
+            onChange={(e) => setQuickForm({ ...quickForm, name: e.target.value })}
+            placeholder="Name (Optional)"
+            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+          />
+          <input
+            type="email"
+            value={quickForm.email}
+            onChange={(e) => setQuickForm({ ...quickForm, email: e.target.value })}
+            placeholder="Email"
+            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+            required
+          />
+          <select
+            value={quickForm.ticketType}
+            onChange={(e) => setQuickForm({ ...quickForm, ticketType: e.target.value })}
+            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+          >
+            <option value="Student Pass">Student Pass (₦1,000)</option>
+            <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+            <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+            <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
+          </select>
+
+          {quickForm.ticketType === "Researcher Premium" && (
+            <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={quickForm.sendBothTickets}
+                  onChange={(e) => setQuickForm({ ...quickForm, sendBothTickets: e.target.checked })}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm">Send both Pre-Conference and Main Conference tickets</span>
+              </label>
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Registering..." : "Register & Send Tickets"}
+          </Button>
+        </form>
+      </div>
+    )}
+
+    {/* Instant Check-in Without Tickets */}
+    {manualSubTab === 'instant' && (
+      <div>
+        <p className="text-sm text-zinc-500 mb-4">Instant registration and check-in. No tickets sent - attendee is checked in immediately.</p>
+        <form onSubmit={handleInstantCheckIn} className="space-y-4 max-w-md">
+          <input
+            type="text"
+            value={instantForm.name}
+            onChange={(e) => setInstantForm({ ...instantForm, name: e.target.value })}
+            placeholder="Name (Optional)"
+            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+          />
+          <input
+            type="email"
+            value={instantForm.email}
+            onChange={(e) => setInstantForm({ ...instantForm, email: e.target.value })}
+            placeholder="Email"
+            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+            required
+          />
+          <select
+            value={instantForm.ticketType}
+            onChange={(e) => setInstantForm({ ...instantForm, ticketType: e.target.value })}
+            className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+          >
+            <option value="Student Pass">Student Pass (₦1,000)</option>
+            <option value="Researcher Standard">Researcher Standard (₦3,000)</option>
+            <option value="Researcher Premium">Researcher Premium (₦6,000)</option>
+            <option value="Lecturer Premium">Lecturer Premium (₦6,000)</option>
+          </select>
+
+          {(instantForm.ticketType === "Researcher Premium" || instantForm.ticketType === "Lecturer Premium") && (
+            <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Session to Check In</label>
+              <select
+                value={instantForm.sessionType}
+                onChange={(e) => setInstantForm({ ...instantForm, sessionType: e.target.value as "pre-conference" | "main-conference" })}
+                className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm"
+              >
+                <option value="pre-conference">Pre-Conference</option>
+                <option value="main-conference">Main Conference</option>
+              </select>
+              <p className="text-xs text-zinc-500 mt-2">
+                {instantForm.sessionType === 'pre-conference' 
+                  ? "This will check the attendee in for the pre-conference and email them a ticket for the main conference."
+                  : "This will check the attendee in for the main conference. No email will be sent."}
+              </p>
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Processing..." : "Register & Check In Now"}
+          </Button>
+        </form>
+      </div>
+    )}
   </div>
 )}
 
@@ -1012,6 +1211,12 @@ export default function AdminDashboardPage() {
         Researcher Premium ({researcherPremiumAttendees.length})
       </Button>
       <Button
+        variant={preConferenceSubTab === 'referral' ? 'default' : 'outline'}
+        onClick={() => setPreConferenceSubTab('referral')}
+      >
+        By Referral ({allAttendees.filter(a => a.referralCode).length})
+      </Button>
+      <Button
         variant={preConferenceSubTab === 'all' ? 'default' : 'outline'}
         onClick={() => setPreConferenceSubTab('all')}
       >
@@ -1086,6 +1291,45 @@ export default function AdminDashboardPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Referral Sub-tab */}
+    {preConferenceSubTab === 'referral' && (
+      <div>
+        {loading ? (
+          <p className="text-zinc-500">Loading...</p>
+        ) : allAttendees.filter(a => a.referralCode).length === 0 ? (
+          <p className="text-zinc-500">No attendees with referral codes yet</p>
+        ) : (
+          <div className="space-y-3">
+            {allAttendees
+              .filter(a => a.referralCode)
+              .map((attendee) => (
+                <div key={attendee._id} className="border rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="font-medium text-zinc-900">{attendee.name}</p>
+                    <p className="text-sm text-zinc-500">{attendee.email}</p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      {attendee.ticketType} • {attendee.paymentStatus}
+                      <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                        Referral: {attendee.referralCode}
+                      </span>
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedAttendee(attendee)
+                      setIsModalOpen(true)
+                    }}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              ))}
           </div>
         )}
       </div>
