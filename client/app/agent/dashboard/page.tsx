@@ -26,6 +26,37 @@ type ScanResult = {
   sessionType?: string
 }
 
+type ScanHistoryApiItem = {
+  _id: string
+  name?: string
+  email?: string
+  ticketType?: string
+  scanStatus?: "success" | "already_scanned" | "invalid"
+  scanSource?: "qr" | "manual"
+  scannedAt?: string
+  checkedInAt?: string
+  checkInStatus?: "checked-in" | "not-checked-in"
+  message?: string
+  details?: {
+    checkedInBy?: string
+    checkedInAt?: string
+    sessionType?: string
+  }
+  sessionType?: string
+}
+
+type ScanErrorDetails = {
+  attendeeName?: string
+  checkedInBy?: string
+  checkedInAt?: string
+  sessionType?: string
+}
+
+type ErrorPayload = {
+  message?: string
+  details?: ScanErrorDetails
+}
+
 type Attendee = {
   _id: string
   name?: string
@@ -44,7 +75,6 @@ type Attendee = {
 export default function AgentDashboardPage() {
   const router = useRouter()
   const { user, logout } = useAuth()
-  const [scanning, setScanning] = useState(false)
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([])
   const [stats, setStats] = useState({ totalScans: 0, successfulCheckIns: 0, successfulManualCheckIns: 0 })
@@ -92,6 +122,20 @@ export default function AgentDashboardPage() {
     )
   }, [])
 
+  const getErrorPayload = useCallback((err: unknown): ErrorPayload | null => {
+    if (!err || typeof err !== "object") return null
+    if (!("response" in err)) return null
+    const response = (err as { response?: { data?: unknown } }).response
+    if (!response || typeof response.data !== "object" || !response.data) return null
+    const data = response.data as { message?: unknown; details?: unknown }
+    const message = typeof data.message === "string" ? data.message : undefined
+    const details =
+      data.details && typeof data.details === "object"
+        ? (data.details as ScanErrorDetails)
+        : undefined
+    return { message, details }
+  }, [])
+
   // Check auth on mount
   useEffect(() => {
     if (!user || user.role !== "agent") {
@@ -109,9 +153,14 @@ export default function AgentDashboardPage() {
   const fetchScanHistory = useCallback(async () => {
     try {
       const response = await scanApi.getScanHistory()
-      const { history, stats } = response.data
+      const payload = (response?.data ?? response) as {
+        history?: ScanHistoryApiItem[]
+        stats?: { totalScans: number; successfulCheckIns: number; successfulManualCheckIns?: number }
+      }
+      const history = Array.isArray(payload?.history) ? payload.history : []
+      const stats = payload?.stats ?? { totalScans: 0, successfulCheckIns: 0, successfulManualCheckIns: 0 }
       
-      const formattedHistory: ScanResult[] = history.map((item: any) => ({
+      const formattedHistory: ScanResult[] = history.map((item) => ({
         id: item._id,
         attendeeName: item.name || "Unknown",
         email: item.email || "",
@@ -130,7 +179,11 @@ export default function AgentDashboardPage() {
               : item.sessionType,
       }))
       setScanHistory(formattedHistory)
-      setStats(stats)
+      setStats({
+        totalScans: stats.totalScans,
+        successfulCheckIns: stats.successfulCheckIns,
+        successfulManualCheckIns: stats.successfulManualCheckIns ?? 0,
+      })
     } catch (error) {
       console.error("Failed to fetch scan history:", error)
     }
@@ -183,18 +236,18 @@ export default function AgentDashboardPage() {
       setConfirmAttendee(null)
       await fetchAttendees()
       await fetchScanHistory()
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Manual check-in failed"
-      setConfirmError(String(msg))
+    } catch (err: unknown) {
+      const payload = getErrorPayload(err)
+      const msg = payload?.message || "Manual check-in failed"
+      setConfirmError(msg)
     } finally {
       setConfirmLoading(false)
     }
-  }, [confirmAttendee, confirmSession, fetchAttendees, fetchScanHistory])
+  }, [confirmAttendee, confirmSession, fetchAttendees, fetchScanHistory, getErrorPayload])
 
   // Scan handler for camera scan
   const handleCameraScan = useCallback(async (token: string) => {
     setIsScannerOpen(false)
-    setScanning(true)
 
     try {
       const res = await scanApi.scanQR(token)
@@ -210,7 +263,7 @@ export default function AgentDashboardPage() {
         sessionType: data?.sessionType || "",
       }
       setLastResult(result)
-    } catch (err: any) {
+    } catch (err: unknown) {
       let status: "already_scanned" | "invalid" = "invalid"
       let scannedByAgent: string | undefined = undefined
       let checkedInAtTime: string | undefined = undefined
@@ -218,18 +271,18 @@ export default function AgentDashboardPage() {
       let sessionType: string | undefined = undefined
       let message: string | undefined = undefined
 
-      if (err.response && err.response.data) {
-        const { message: serverMessage, details } = err.response.data;
-        message = serverMessage as string
-        const msg = (serverMessage as string).toLowerCase();
+      const payload = getErrorPayload(err)
+      if (payload?.message) {
+        message = payload.message
+        const msg = payload.message.toLowerCase()
 
         if (msg.includes("already") || msg.includes("used")) {
           status = "already_scanned"
-          if (details) {
-            attendeeName = details.attendeeName
-            scannedByAgent = details.checkedInBy
-            checkedInAtTime = details.checkedInAt
-            sessionType = details.sessionType
+          if (payload.details) {
+            attendeeName = payload.details.attendeeName
+            scannedByAgent = payload.details.checkedInBy
+            checkedInAtTime = payload.details.checkedInAt
+            sessionType = payload.details.sessionType
           }
         }
       }
@@ -248,11 +301,10 @@ export default function AgentDashboardPage() {
       }
       setLastResult(result)
     } finally {
-      setScanning(false)
       // Always re-fetch history to get the authoritative state from the server
       fetchScanHistory()
     }
-  }, [fetchScanHistory])
+  }, [fetchScanHistory, getErrorPayload])
 
   useEffect(() => {
     if (!isScannerOpen) {
