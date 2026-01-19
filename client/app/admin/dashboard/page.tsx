@@ -22,12 +22,33 @@ type Attendee = {
   mainConferenceQrCode?: string
   preConferenceCheckInStatus?: "checked-in" | "not-checked-in"
   mainConferenceCheckInStatus?: "checked-in" | "not-checked-in"
+  preConferenceCheckInSource?: "qr" | "manual"
+  mainConferenceCheckInSource?: "qr" | "manual"
   createdAt: string,
   referralCode?: string,
   wantsPreConference?: boolean,
   preConferenceInviteSent?: boolean,
   preConferenceDeclinedDuringReg?: boolean,
   preConferenceInviteResponse?: 'pending' | 'yes' | 'no',
+}
+
+type ScanHistoryItem = {
+  _id: string
+  name: string
+  email: string
+  ticketType: string
+  scannedAt: string
+  scanStatus: "success" | "already_scanned" | "invalid"
+  scanSource?: "qr" | "manual"
+  sessionType?: "pre-conference" | "main-conference"
+  message?: string
+}
+
+type ScanHistoryStats = {
+  totalScans: number
+  successfulCheckIns: number
+  successfulManualCheckIns: number
+  successfulQrScans: number
 }
 
 type Agent = {
@@ -91,12 +112,18 @@ const [instantForm, setInstantForm] = useState<InstantFormState>({
     | { open: false }
     | {
         open: true
-        action: "approve" | "decline" | "sendPreConferenceInvite"
+        action: "approve" | "decline" | "sendPreConferenceInvite" | "manualCheckIn"
         attendee: Attendee
         sessionType?: 'pre-conference' | 'main-conference'
       }
   >({ open: false })
   const [confirmLoading, setConfirmLoading] = useState(false)
+
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("")
+  const [agentScanHistory, setAgentScanHistory] = useState<ScanHistoryItem[]>([])
+  const [agentScanStats, setAgentScanStats] = useState<ScanHistoryStats | null>(null)
+  const [agentScanLoading, setAgentScanLoading] = useState(false)
+  const [agentScanError, setAgentScanError] = useState<string | null>(null)
 
   // Dashbord tab counts
   const [dashboardData, setDashboardData] = useState<DashboardDataType>({
@@ -105,6 +132,54 @@ const [instantForm, setInstantForm] = useState<InstantFormState>({
     totalAgentsCount: 0,
     pendingApprovalsCount: 0,
   })
+
+  const formatDateTime = (value?: string) => {
+    if (!value) return ""
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return String(value)
+    return date.toLocaleString()
+  }
+
+  const renderSourceBadge = (source?: "qr" | "manual") => {
+    if (!source) return null
+    const isManual = source === "manual"
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          isManual ? "bg-indigo-100 text-indigo-800" : "bg-emerald-100 text-emerald-800"
+        }`}
+      >
+        {isManual ? "Manual" : "QR"}
+      </span>
+    )
+  }
+
+  const fetchAgentScanHistory = useCallback(
+    async (agentId: string) => {
+      if (!agentId) {
+        setAgentScanHistory([])
+        setAgentScanStats(null)
+        return
+      }
+
+      setAgentScanLoading(true)
+      setAgentScanError(null)
+      try {
+        const res = await adminApi.getAgentScanHistory(agentId)
+        const data = res?.data
+        setAgentScanHistory(Array.isArray(data?.history) ? data.history : [])
+        setAgentScanStats(data?.stats ?? null)
+      } catch (error) {
+        console.error("Failed to fetch agent scan history:", error)
+        setAgentScanError("Failed to load scan history")
+        setAgentScanHistory([])
+        setAgentScanStats(null)
+      } finally {
+        setAgentScanLoading(false)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     if (selectedAttendee?.paymentProof) {
@@ -314,6 +389,15 @@ const [instantForm, setInstantForm] = useState<InstantFormState>({
         await approveAttendee(confirmState.attendee._id, ticketType, confirmState.sessionType)
       } else if (confirmState.action === 'sendPreConferenceInvite') {
         await handleSendPreConferenceInvite(confirmState.attendee._id);
+      } else if (confirmState.action === 'manualCheckIn') {
+        if (confirmState.sessionType === 'pre-conference') {
+          await adminApi.manualCheckInPreConference(confirmState.attendee._id)
+          setMessage({ type: 'success', text: 'Pre-conference manual check-in successful.' })
+        } else {
+          await adminApi.manualCheckInMainConference(confirmState.attendee._id)
+          setMessage({ type: 'success', text: 'Main conference manual check-in successful.' })
+        }
+        fetchAttendees()
       }
       else {
         await declineAttendee(confirmState.attendee._id)
@@ -460,6 +544,10 @@ async function handleInstantCheckIn(e: React.FormEvent) {
           confirmState.open
             ? confirmState.action === "approve"
               ? "Approve payment?"
+              : confirmState.action === 'manualCheckIn'
+              ? (confirmState.sessionType === 'pre-conference'
+                  ? 'Confirm pre-conference manual check-in?'
+                  : 'Confirm main conference manual check-in?')
               : confirmState.action === 'sendPreConferenceInvite'
               ? 'Send pre-conference invite?'
               : "Decline payment?"
@@ -478,6 +566,8 @@ async function handleInstantCheckIn(e: React.FormEvent) {
               </div>
               {confirmState.action === "decline" ? (
                 <div className="text-sm text-zinc-600">This will mark the payment as declined.</div>
+              ) : confirmState.action === 'manualCheckIn' ? (
+                <div className="text-sm text-red-600">This action is not reversible. Please confirm you’re checking in the correct person.</div>
               ) : confirmState.action === 'sendPreConferenceInvite' ? (
                 <div className="text-sm text-zinc-600">This will send an email to the user with a link to respond to the pre-conference invite.</div>
               ) : (
@@ -490,13 +580,15 @@ async function handleInstantCheckIn(e: React.FormEvent) {
           confirmState.open 
             ? confirmState.action === "approve" 
               ? "Approve" 
+              : confirmState.action === 'manualCheckIn'
+              ? (confirmState.sessionType === 'pre-conference' ? 'Check in (Pre-Conf)' : 'Check in (Main Conf)')
               : confirmState.action === 'sendPreConferenceInvite'
               ? 'Send Invite'
               : "Decline" 
             : "Confirm"
         }
         cancelText="Cancel"
-        variant={confirmState.open && confirmState.action === "decline" ? "danger" : "default"}
+        variant={confirmState.open && (confirmState.action === "decline" || confirmState.action === 'manualCheckIn') ? "danger" : "default"}
         loading={confirmLoading}
         onCancel={() => (confirmLoading ? null : setConfirmState({ open: false }))}
         onConfirm={handleConfirmAction}
@@ -855,15 +947,54 @@ async function handleInstantCheckIn(e: React.FormEvent) {
       </td>
       <td className="p-3 text-center">
         {(a.ticketType === 'Lecturer Premium' || (a.ticketType === 'Researcher Premium' && a.preConferenceQrCode)) ? (
-          a.preConferenceCheckInStatus === "checked-in" ? "✅" : "❌"
+          a.preConferenceCheckInStatus === "checked-in" ? (
+            <div className="inline-flex flex-col items-center gap-1">
+              <span>✅</span>
+              {renderSourceBadge(a.preConferenceCheckInSource)}
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmState({ open: true, action: 'manualCheckIn', attendee: a, sessionType: 'pre-conference' })}
+            >
+              Check in
+            </Button>
+          )
         ) : (
           <span className="text-zinc-400">N/A</span>
         )}
       </td>
       <td className="p-3 text-center">
         {(a.ticketType === 'Lecturer Premium' || (a.ticketType === 'Researcher Premium' && a.preConferenceQrCode)) 
-          ? (a.mainConferenceCheckInStatus === "checked-in" ? "✅" : "❌")
-          : (a.checkInStatus === "checked-in" ? "✅" : "❌")
+          ? (a.mainConferenceCheckInStatus === "checked-in" ? (
+            <div className="inline-flex flex-col items-center gap-1">
+              <span>✅</span>
+              {renderSourceBadge(a.mainConferenceCheckInSource)}
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmState({ open: true, action: 'manualCheckIn', attendee: a, sessionType: 'main-conference' })}
+            >
+              Check in
+            </Button>
+          ))
+          : (a.checkInStatus === "checked-in" ? (
+            <div className="inline-flex flex-col items-center gap-1">
+              <span>✅</span>
+              {renderSourceBadge(a.mainConferenceCheckInSource)}
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmState({ open: true, action: 'manualCheckIn', attendee: a, sessionType: 'main-conference' })}
+            >
+              Check in
+            </Button>
+          ))
         }
       </td>
     </tr>
@@ -901,6 +1032,120 @@ async function handleInstantCheckIn(e: React.FormEvent) {
                     {loading ? "Adding..." : "Add Agent"}
                   </Button>
                 </form>
+              </div>
+
+              <div className="border rounded-xl p-4 bg-white">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Agent Scan History</h2>
+                    <p className="text-sm text-zinc-500">View QR and manual check-ins (including failed scans).</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      value={selectedAgentId}
+                      onChange={(e) => {
+                        const next = e.target.value
+                        setSelectedAgentId(next)
+                        fetchAgentScanHistory(next)
+                      }}
+                    >
+                      <option value="">Select an agent…</option>
+                      {agents.map((a) => (
+                        <option key={a._id} value={a._id}>
+                          {a.name} ({a.email})
+                        </option>
+                      ))}
+                    </select>
+
+                    <Button
+                      variant="outline"
+                      disabled={!selectedAgentId || agentScanLoading}
+                      onClick={() => fetchAgentScanHistory(selectedAgentId)}
+                    >
+                      {agentScanLoading ? "Loading…" : "Refresh"}
+                    </Button>
+                  </div>
+                </div>
+
+                {agentScanError ? (
+                  <div className="mt-3 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+                    {agentScanError}
+                  </div>
+                ) : null}
+
+                {selectedAgentId && agentScanStats ? (
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-zinc-500">Total scans</p>
+                      <p className="text-xl font-semibold">{agentScanStats.totalScans}</p>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-zinc-500">Successful check-ins</p>
+                      <p className="text-xl font-semibold">{agentScanStats.successfulCheckIns}</p>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-zinc-500">Manual successes</p>
+                      <p className="text-xl font-semibold">{agentScanStats.successfulManualCheckIns}</p>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-zinc-500">QR successes</p>
+                      <p className="text-xl font-semibold">{agentScanStats.successfulQrScans}</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedAgentId ? (
+                  <div className="mt-4">
+                    {agentScanLoading ? (
+                      <p className="text-sm text-zinc-500">Loading scan history…</p>
+                    ) : agentScanHistory.length === 0 ? (
+                      <p className="text-sm text-zinc-500">No scan logs found for this agent.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {agentScanHistory.map((log) => (
+                          <div
+                            key={log._id}
+                            className={`rounded-lg p-3 text-sm flex justify-between items-center ${
+                              log.scanStatus === "success"
+                                ? "bg-green-50"
+                                : log.scanStatus === "already_scanned"
+                                ? "bg-yellow-50"
+                                : "bg-red-50"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{log.name}</p>
+                              <p className="text-xs text-zinc-600 truncate">{log.email}</p>
+                              <p className="text-xs text-zinc-600">
+                                {(log.sessionType || "").replace("-", " ")}
+                                {log.sessionType ? " • " : ""}
+                                {renderSourceBadge(log.scanSource)}
+                              </p>
+                              <p className="text-xs text-zinc-500">{formatDateTime(log.scannedAt)}</p>
+                              {log.scanStatus !== "success" && log.message ? (
+                                <p className="text-xs text-zinc-600">{log.message}</p>
+                              ) : null}
+                            </div>
+
+                            <span
+                              className={`ml-3 shrink-0 px-2 py-1 rounded-full text-xs ${
+                                log.scanStatus === "success"
+                                  ? "bg-green-200 text-green-800"
+                                  : log.scanStatus === "already_scanned"
+                                  ? "bg-yellow-200 text-yellow-800"
+                                  : "bg-red-200 text-red-800"
+                              }`}
+                            >
+                              {log.scanStatus === "success" ? "Success" : log.scanStatus === "already_scanned" ? "Already" : "Invalid"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               <div>

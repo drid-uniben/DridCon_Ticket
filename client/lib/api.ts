@@ -227,6 +227,10 @@ export const adminApi = {
   createAgent: async (data: { name: string; email: string }) =>
     (await api.post("/admin/agents", data)).data,
   getAgents: async () => (await api.get("/admin/agents")).data,
+  getAgentScanHistory: async (agentId: string, limit?: number) => {
+    const qs = typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : "";
+    return (await api.get(`/admin/agents/${agentId}/scan-history${qs}`)).data;
+  },
   manualRegister: async (data: Record<string, unknown>) =>
     (await api.post("/admin/attendees/manual", data)).data,
   inviteAttendee: async (data: Record<string, unknown>) =>
@@ -261,11 +265,25 @@ export const adminApi = {
     ticketType: string;
     sessionType?: 'pre-conference' | 'main-conference';
   }) => (await api.post("/admin/attendees/instant-checkin", data)).data,
+
+  manualCheckInPreConference: async (attendeeId: string) =>
+    (await api.post("/admin/attendees/pre-conference/manual-check-in", { attendeeId })).data,
+  manualCheckInMainConference: async (attendeeId: string) =>
+    (await api.post("/admin/attendees/main-conference/manual-check-in", { attendeeId })).data,
 };
 
 // Scan API
 export const scanApi = {
   scanQR: async (qrCode: string) => (await api.post("/scan", { qrCode })).data,
+  checkInPreConference: async (qrCode: string) =>
+    (await api.post("/scan/pre-conference/check-in", { qrCode })).data,
+  checkInMainConference: async (qrCode: string) =>
+    (await api.post("/scan/main-conference/check-in", { qrCode })).data,
+  getAttendees: async () => (await api.get("/scan/attendees")).data,
+  manualCheckInPreConference: async (attendeeId: string) =>
+    (await api.post("/scan/pre-conference/manual-check-in", { attendeeId })).data,
+  manualCheckInMainConference: async (attendeeId: string) =>
+    (await api.post("/scan/main-conference/manual-check-in", { attendeeId })).data,
   getScanHistory: async () => (await api.get("/scan/history")).data,
 };
 

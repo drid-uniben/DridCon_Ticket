@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import Logo from "@/components/Logo"
 import { scanApi } from "@/lib/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser"
 import { Result, Exception } from "@zxing/library"
 
@@ -18,9 +19,26 @@ type ScanResult = {
   ticketType: string
   status: "success" | "already_scanned" | "invalid"
   scannedAt: string
+  message?: string
+  scanSource?: "qr" | "manual"
   scannedBy?: string
   checkedInAt?: string
   sessionType?: string
+}
+
+type Attendee = {
+  _id: string
+  name?: string
+  email?: string
+  ticketType?: string
+  qrCode?: string
+  preConferenceQrCode?: string
+  mainConferenceQrCode?: string
+  checkInStatus?: "checked-in" | "not-checked-in"
+  preConferenceCheckInStatus?: "checked-in" | "not-checked-in"
+  mainConferenceCheckInStatus?: "checked-in" | "not-checked-in"
+  preConferenceCheckInSource?: "qr" | "manual"
+  mainConferenceCheckInSource?: "qr" | "manual"
 }
 
 export default function AgentDashboardPage() {
@@ -29,14 +47,50 @@ export default function AgentDashboardPage() {
   const [scanning, setScanning] = useState(false)
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([])
-  const [stats, setStats] = useState({ totalScans: 0, successfulCheckIns: 0 })
+  const [stats, setStats] = useState({ totalScans: 0, successfulCheckIns: 0, successfulManualCheckIns: 0 })
   const [showHistory, setShowHistory] = useState(false)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Registered attendees (manual check-in UI)
+  const [attendees, setAttendees] = useState<Attendee[]>([])
+  const [attendeesLoading, setAttendeesLoading] = useState(false)
+  const [attendeesError, setAttendeesError] = useState<string | null>(null)
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmSession, setConfirmSession] = useState<"pre-conference" | "main-conference">("main-conference")
+  const [confirmAttendee, setConfirmAttendee] = useState<Attendee | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
+
   // QR Scanner refs
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<IScannerControls | null>(null)
+
+  const formatDateTime = useCallback((iso: string) => {
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return ""
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date)
+  }, [])
+
+  const renderSourceBadge = useCallback((source?: "qr" | "manual") => {
+    if (!source) return null
+    const isManual = source === "manual"
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          isManual ? "bg-indigo-100 text-indigo-800" : "bg-emerald-100 text-emerald-800"
+        }`}
+      >
+        {isManual ? "Manual" : "QR"}
+      </span>
+    )
+  }, [])
 
   // Check auth on mount
   useEffect(() => {
@@ -62,10 +116,18 @@ export default function AgentDashboardPage() {
         attendeeName: item.name || "Unknown",
         email: item.email || "",
         ticketType: item.ticketType || "",
-        status: item.checkInStatus === "checked-in" ? "success" : "invalid", // The backend now sends the correct status for the session
-        scannedAt: item.checkedInAt,
-        scannedBy: item.checkedInBy?.name,
-        sessionType: item.sessionType, // This now comes directly from the backend
+        status: item.scanStatus || (item.checkInStatus === "checked-in" ? "success" : "invalid"),
+        scannedAt: item.scannedAt || item.checkedInAt || new Date().toISOString(),
+        message: item.message,
+        scanSource: item.scanSource,
+        scannedBy: item.details?.checkedInBy,
+        checkedInAt: item.details?.checkedInAt,
+        sessionType:
+          item.sessionType === "pre-conference"
+            ? "Pre-Conference"
+            : item.sessionType === "main-conference"
+              ? "Main Conference"
+              : item.sessionType,
       }))
       setScanHistory(formattedHistory)
       setStats(stats)
@@ -74,12 +136,60 @@ export default function AgentDashboardPage() {
     }
   }, [])
 
+  const fetchAttendees = useCallback(async () => {
+    setAttendeesLoading(true)
+    setAttendeesError(null)
+    try {
+      const res = await scanApi.getAttendees()
+      const list = (res?.data ?? res) as Attendee[]
+      setAttendees(Array.isArray(list) ? list : [])
+    } catch (error) {
+      console.error("Failed to fetch attendees:", error)
+      setAttendeesError("Failed to load registered people")
+    } finally {
+      setAttendeesLoading(false)
+    }
+  }, [])
+
   // Load scan history from server on initial load
   useEffect(() => {
     if (user && user.role === "agent") {
       fetchScanHistory()
+      fetchAttendees()
     }
-  }, [user, fetchScanHistory])
+  }, [user, fetchScanHistory, fetchAttendees])
+
+  const openManualConfirm = useCallback(
+    (session: "pre-conference" | "main-conference", attendee: Attendee) => {
+      setConfirmSession(session)
+      setConfirmAttendee(attendee)
+      setConfirmError(null)
+      setConfirmOpen(true)
+    },
+    []
+  )
+
+  const doManualCheckIn = useCallback(async () => {
+    if (!confirmAttendee?._id) return
+    setConfirmLoading(true)
+    setConfirmError(null)
+    try {
+      if (confirmSession === "pre-conference") {
+        await scanApi.manualCheckInPreConference(confirmAttendee._id)
+      } else {
+        await scanApi.manualCheckInMainConference(confirmAttendee._id)
+      }
+      setConfirmOpen(false)
+      setConfirmAttendee(null)
+      await fetchAttendees()
+      await fetchScanHistory()
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Manual check-in failed"
+      setConfirmError(String(msg))
+    } finally {
+      setConfirmLoading(false)
+    }
+  }, [confirmAttendee, confirmSession, fetchAttendees, fetchScanHistory])
 
   // Scan handler for camera scan
   const handleCameraScan = useCallback(async (token: string) => {
@@ -106,10 +216,12 @@ export default function AgentDashboardPage() {
       let checkedInAtTime: string | undefined = undefined
       let attendeeName: string | undefined = undefined
       let sessionType: string | undefined = undefined
+      let message: string | undefined = undefined
 
       if (err.response && err.response.data) {
-        const { message, details } = err.response.data;
-        const msg = (message as string).toLowerCase();
+        const { message: serverMessage, details } = err.response.data;
+        message = serverMessage as string
+        const msg = (serverMessage as string).toLowerCase();
 
         if (msg.includes("already") || msg.includes("used")) {
           status = "already_scanned"
@@ -129,6 +241,7 @@ export default function AgentDashboardPage() {
         ticketType: "",
         status,
         scannedAt: new Date().toISOString(),
+        message,
         scannedBy: scannedByAgent,
         checkedInAt: checkedInAtTime,
         sessionType,
@@ -226,8 +339,48 @@ export default function AgentDashboardPage() {
         </DialogContent>
       </Dialog>
 
+      <ConfirmDialog
+        open={confirmOpen}
+        title={
+          confirmSession === "pre-conference"
+            ? "Confirm Pre-Conference Manual Check-in"
+            : "Confirm Main Conference Manual Check-in"
+        }
+        description={
+          <div className="space-y-2">
+            <p className="text-zinc-700">
+              You are about to manually check in:
+              <span className="font-semibold"> {confirmAttendee?.name || "Unknown"}</span>
+            </p>
+            <p className="text-zinc-600">
+              <span className="font-medium">Email:</span> {confirmAttendee?.email || "—"}
+            </p>
+            <p className="text-zinc-600">
+              <span className="font-medium">Ticket:</span> {confirmAttendee?.ticketType || "—"}
+            </p>
+            <p className="text-sm text-red-600">
+              This action is not reversible. Please confirm you’re checking in the correct person.
+            </p>
+            {confirmError ? (
+              <p className="text-sm text-red-600">{confirmError}</p>
+            ) : null}
+          </div>
+        }
+        confirmText={confirmSession === "pre-conference" ? "Check in (Pre-Conf)" : "Check in (Main Conf)"}
+        cancelText="Cancel"
+        variant="danger"
+        loading={confirmLoading}
+        onConfirm={doManualCheckIn}
+        onCancel={() => {
+          if (confirmLoading) return
+          setConfirmOpen(false)
+          setConfirmAttendee(null)
+          setConfirmError(null)
+        }}
+      />
+
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 shadow text-center">
             <p className="text-3xl font-bold text-green-600">{stats.successfulCheckIns}</p>
             <p className="text-sm text-zinc-500">Successful Check-ins</p>
@@ -235,6 +388,10 @@ export default function AgentDashboardPage() {
           <div className="bg-white rounded-xl p-4 shadow text-center">
             <p className="text-3xl font-bold text-zinc-900">{stats.totalScans}</p>
             <p className="text-sm text-zinc-500">Total Scans</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow text-center">
+            <p className="text-3xl font-bold text-purple-700">{stats.successfulManualCheckIns}</p>
+            <p className="text-sm text-zinc-500">Manual Check-ins</p>
           </div>
         </div>
 
@@ -296,8 +453,10 @@ export default function AgentDashboardPage() {
               {lastResult.status === "invalid" && (
                 <>
                   <div className="text-6xl mb-2">❌</div>
-                  <h3 className="text-2xl font-bold text-red-700">Invalid QR Code</h3>
-                  <p className="text-sm text-red-500 mt-2">This QR code is not recognized</p>
+                  <h3 className="text-2xl font-bold text-red-700">Scan Failed</h3>
+                  <p className="text-sm text-red-500 mt-2">
+                    {lastResult.message || "This QR code is not recognized"}
+                  </p>
                 </>
               )}
             </div>
@@ -335,14 +494,18 @@ export default function AgentDashboardPage() {
                 <div>
       <p className="font-medium">{scan.attendeeName}</p>
       {scan.sessionType && (
-        <p className="text-xs text-zinc-600">{scan.sessionType}</p>
+        <p className="text-xs text-zinc-600">
+          {scan.sessionType}{scan.scanSource ? ` • ${scan.scanSource === "manual" ? "Manual" : "QR"}` : ""}
+        </p>
       )}
-      <p className="text-xs text-zinc-500">
-        {new Date(scan.scannedAt).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-      </p>
+      <p className="text-xs text-zinc-500">{formatDateTime(scan.scannedAt)}</p>
+      {scan.status !== "success" && (scan.message || scan.scannedBy || scan.checkedInAt) ? (
+        <p className="text-xs text-zinc-600">
+          {scan.message || ""}
+          {scan.scannedBy ? ` • Checked in by: ${scan.scannedBy}` : ""}
+          {scan.checkedInAt ? ` • At: ${formatDateTime(scan.checkedInAt)}` : ""}
+        </p>
+      ) : null}
     </div>
 
                 <span
@@ -360,6 +523,100 @@ export default function AgentDashboardPage() {
             ))}
           </div>
         )}
+
+        {/* Registered People */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-zinc-900">Registered People</h2>
+            <Button variant="outline" onClick={fetchAttendees} disabled={attendeesLoading}>
+              Refresh
+            </Button>
+          </div>
+
+          {attendeesError ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">
+              {attendeesError}
+            </div>
+          ) : null}
+
+          <div className="bg-white rounded-2xl shadow p-4 overflow-x-auto">
+            {attendeesLoading ? (
+              <div className="text-sm text-zinc-500">Loading registered people…</div>
+            ) : attendees.length === 0 ? (
+              <div className="text-sm text-zinc-500">No attendees found.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-zinc-50">
+                    <th className="text-left p-3">Name</th>
+                    <th className="text-left p-3">Email</th>
+                    <th className="text-left p-3">Ticket</th>
+                    <th className="text-center p-3">Pre-Conf</th>
+                    <th className="text-center p-3">Main Conf</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendees.map((a) => {
+                    const eligibleForPreConf = Boolean(a.preConferenceQrCode)
+                    const preConfCheckedIn = a.preConferenceCheckInStatus === "checked-in"
+
+                    const eligibleForMainConf = Boolean(a.qrCode || a.mainConferenceQrCode)
+                    const mainCheckedIn =
+                      a.mainConferenceQrCode
+                        ? a.mainConferenceCheckInStatus === "checked-in"
+                        : a.checkInStatus === "checked-in"
+
+                    return (
+                      <tr key={a._id} className="border-b hover:bg-zinc-50">
+                        <td className="p-3">{a.name || "Unknown"}</td>
+                        <td className="p-3 text-zinc-500">{a.email || ""}</td>
+                        <td className="p-3">{a.ticketType || ""}</td>
+
+                        <td className="p-3 text-center">
+                          {!eligibleForPreConf ? (
+                            <span className="text-zinc-400">N/A</span>
+                          ) : preConfCheckedIn ? (
+                            <div className="inline-flex flex-col items-center gap-1">
+                              <span>✅</span>
+                              {renderSourceBadge(a.preConferenceCheckInSource)}
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openManualConfirm("pre-conference", a)}
+                            >
+                              Check in
+                            </Button>
+                          )}
+                        </td>
+
+                        <td className="p-3 text-center">
+                          {!eligibleForMainConf ? (
+                            <span className="text-zinc-400">N/A</span>
+                          ) : mainCheckedIn ? (
+                            <div className="inline-flex flex-col items-center gap-1">
+                              <span>✅</span>
+                              {renderSourceBadge(a.mainConferenceCheckInSource)}
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openManualConfirm("main-conference", a)}
+                            >
+                              Check in
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

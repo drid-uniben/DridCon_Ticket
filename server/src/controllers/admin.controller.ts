@@ -14,6 +14,8 @@ import {
   ForbiddenError,
 } from '../utils/customErrors';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { recordScanAttempt } from '../services/scanHistory.service';
+import { getLatestSuccessfulCheckInSourcesForAttendees } from '../services/scanHistory.service';
 import passwordGenerator from '../utils/passwordGenerator';
 import emailService from '../services/email.service';
 import { generateQRCode } from '../services/qr.service';
@@ -484,10 +486,24 @@ class AdminController {
         createdAt: -1,
       });
 
+      const attendeeIds = attendees.map((a) => a._id);
+      const sourcesMap = await getLatestSuccessfulCheckInSourcesForAttendees(attendeeIds);
+      const enriched = attendees.map((a) => {
+        const obj = a.toObject();
+        const id = a._id.toString();
+        const pre = sourcesMap.get(`${id}:pre-conference`);
+        const main = sourcesMap.get(`${id}:main-conference`);
+        return {
+          ...obj,
+          preConferenceCheckInSource: pre?.scanSource,
+          mainConferenceCheckInSource: main?.scanSource,
+        };
+      });
+
       res.status(200).json({
         success: true,
-        count: attendees.length,
-        data: attendees,
+        count: enriched.length,
+        data: enriched,
       });
     }
   );
@@ -697,6 +713,158 @@ class AdminController {
       res.status(201).json({
         success: true,
         message: 'Attendee registered and checked in successfully.',
+        data: attendee,
+      });
+    }
+  );
+
+  manualCheckInPreConference = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const { attendeeId } = req.body as { attendeeId?: string };
+
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new ForbiddenError('Only administrators can check in attendees.');
+      }
+
+      if (!attendeeId) {
+        throw new BadRequestError('attendeeId is required.');
+      }
+
+      const attendee = await User.findById(attendeeId).populate(
+        'preConferenceCheckedInBy',
+        'name'
+      );
+
+      if (!attendee) {
+        throw new NotFoundError('Attendee not found.');
+      }
+
+      if (attendee.role !== UserRole.USER) {
+        throw new BadRequestError('Only attendees can be checked in.');
+      }
+
+      if (!attendee.preConferenceQrCode) {
+        throw new BadRequestError(
+          'This attendee does not have a pre-conference ticket.'
+        );
+      }
+
+      if (attendee.preConferenceCheckInStatus === CheckInStatus.CHECKED_IN) {
+        throw new BadRequestError('This pre-conference ticket has already been used.');
+      }
+
+      attendee.preConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
+      attendee.preConferenceCheckedInAt = new Date();
+      attendee.preConferenceCheckedInBy = req.user._id as any;
+      await attendee.save();
+
+      await recordScanAttempt({
+        agentId: req.user._id,
+        scanSource: 'manual',
+        scanStatus: 'success',
+        sessionType: 'pre-conference',
+        attendee,
+        message: 'Pre-conference check-in successful.',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Pre-conference check-in successful.',
+        data: attendee,
+      });
+    }
+  );
+
+  manualCheckInMainConference = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const { attendeeId } = req.body as { attendeeId?: string };
+
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new ForbiddenError('Only administrators can check in attendees.');
+      }
+
+      if (!attendeeId) {
+        throw new BadRequestError('attendeeId is required.');
+      }
+
+      const attendee = await User.findById(attendeeId).populate(
+        'checkedInBy mainConferenceCheckedInBy',
+        'name'
+      );
+
+      if (!attendee) {
+        throw new NotFoundError('Attendee not found.');
+      }
+
+      if (attendee.role !== UserRole.USER) {
+        throw new BadRequestError('Only attendees can be checked in.');
+      }
+
+      const isLegacyTicket =
+        !attendee.mainConferenceQrCode &&
+        !attendee.preConferenceQrCode &&
+        attendee.qrCode;
+
+      if (isLegacyTicket) {
+        if (attendee.checkInStatus === CheckInStatus.CHECKED_IN) {
+          throw new BadRequestError('This ticket has already been used.');
+        }
+
+        attendee.checkInStatus = CheckInStatus.CHECKED_IN;
+        attendee.checkedInAt = new Date();
+        attendee.checkedInBy = req.user._id as any;
+        await attendee.save();
+
+        await recordScanAttempt({
+          agentId: req.user._id,
+          scanSource: 'manual',
+          scanStatus: 'success',
+          sessionType: 'main-conference',
+          attendee,
+          message: 'Check-in successful.',
+        });
+
+        res.status(200).json({
+          success: true,
+          message: 'Check-in successful.',
+          data: attendee,
+        });
+        return;
+      }
+
+      const checkedInField =
+        attendee.ticketType === TicketType.LECTURER_PREMIUM
+          ? attendee.mainConferenceCheckInStatus
+          : attendee.checkInStatus;
+
+      if (checkedInField === CheckInStatus.CHECKED_IN) {
+        throw new BadRequestError('This ticket has already been used.');
+      }
+
+      if (attendee.ticketType === TicketType.LECTURER_PREMIUM) {
+        attendee.mainConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
+        attendee.mainConferenceCheckedInAt = new Date();
+        attendee.mainConferenceCheckedInBy = req.user._id as any;
+      } else {
+        attendee.checkInStatus = CheckInStatus.CHECKED_IN;
+        attendee.checkedInAt = new Date();
+        attendee.checkedInBy = req.user._id as any;
+      }
+
+      await attendee.save();
+
+      await recordScanAttempt({
+        agentId: req.user._id,
+        scanSource: 'manual',
+        scanStatus: 'success',
+        sessionType: 'main-conference',
+        attendee,
+        message: 'Check-in successful.',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Check-in successful.',
         data: attendee,
       });
     }
