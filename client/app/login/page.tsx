@@ -21,22 +21,21 @@ export default function LoginPage() {
 
   try {
     await login({ email, password })
-  } catch (err: any) {
+  } catch (err: unknown) {
     let message = "Login failed. Please check your email and password."
 
-    if (err?.response) {
-      if (err.response.status === 400 || err.response.status === 401) {
-        message = "Invalid email or password."
-      } 
-      else if (err.response.status === 404) {
-        message = "Account not found."
-      } 
-      else if (err.response.status >= 500) {
-        message = "Server error. Please try again later."
-      }
-    } 
-    
-    else if (err?.message?.includes("Network")) {
+    const status =
+      typeof err === "object" && err && "response" in err
+        ? (err as { response?: { status?: number } }).response?.status
+        : undefined
+
+    if (status === 400 || status === 401) {
+      message = "Invalid email or password."
+    } else if (status === 404) {
+      message = "Account not found."
+    } else if (typeof status === "number" && status >= 500) {
+      message = "Server error. Please try again later."
+    } else if (err instanceof Error && err.message.includes("Network")) {
       message = "Network error. Please check your connection."
     }
 

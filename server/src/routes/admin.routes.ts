@@ -1,5 +1,6 @@
 import express from 'express';
 import adminController from '../controllers/admin.controller';
+import scanLogController from '../controllers/scanLog.controller';
 import {
   authenticateAdminToken,
   rateLimiter,
@@ -46,6 +47,19 @@ router.post(
   adminController.quickRegisterWithTickets
 );
 
+// Manual check-in for existing attendees
+router.post(
+  '/attendees/pre-conference/manual-check-in',
+  adminController.manualCheckInPreConference
+);
+router.post(
+  '/attendees/main-conference/manual-check-in',
+  adminController.manualCheckInMainConference
+);
+
 router.post('/attendees/instant-checkin', adminController.instantCheckIn);
+
+// Scan logs (admin)
+router.get('/agents/:agentId/scan-history', scanLogController.getActorScanHistoryForAdmin);
 
 export default router;

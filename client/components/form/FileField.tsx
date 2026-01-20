@@ -1,5 +1,6 @@
 "use client"
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -12,20 +13,14 @@ type Props = {
 
 export default function FileField({ label, name, value, onChange, required }: Props) {
   const [isDragging, setIsDragging] = useState(false)
-  const [preview, setPreview] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  const preview = useMemo(() => (value ? URL.createObjectURL(value) : null), [value])
+
   useEffect(() => {
-    if (value) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreview(reader.result as string)
-      }
-      reader.readAsDataURL(value)
-    } else {
-      setPreview(null)
-    }
-  }, [value])
+    if (!preview) return
+    return () => URL.revokeObjectURL(preview)
+  }, [preview])
 
   const pickFile = () => inputRef.current?.click()
 
@@ -142,17 +137,20 @@ export default function FileField({ label, name, value, onChange, required }: Pr
       {preview && (
         <div className="mt-4 w-full max-w-xs relative">
           {/* Preview Image */}
-          <img
-            src={preview}
-            alt="Preview"
-            className="w-full rounded-xl border shadow-md"
-          />
+          <div className="relative w-full aspect-[4/3]">
+            <Image
+              src={preview}
+              alt="Preview"
+              fill
+              sizes="(max-width: 640px) 100vw, 320px"
+              className="rounded-xl border shadow-md object-cover"
+            />
+          </div>
 
           {/* X Remove Button */}
           <button
             type="button"
             onClick={() => {
-              setPreview(null)
               onChange(null)
               if (inputRef.current) inputRef.current.value = ""
             }}
