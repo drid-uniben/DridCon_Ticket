@@ -86,6 +86,7 @@ export default function AgentDashboardPage() {
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [attendeesLoading, setAttendeesLoading] = useState(false)
   const [attendeesError, setAttendeesError] = useState<string | null>(null)
+  const [attendeeSearch, setAttendeeSearch] = useState("")
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmSession, setConfirmSession] = useState<"pre-conference" | "main-conference">("main-conference")
@@ -107,6 +108,19 @@ export default function AgentDashboardPage() {
       minute: "2-digit",
     }).format(date)
   }, [])
+
+  // Filter attendees based on search query
+  const filteredAttendees = React.useMemo(() => {
+    if (!attendeeSearch.trim()) {
+      return attendees
+    }
+    const query = attendeeSearch.toLowerCase()
+    return attendees.filter((a) => {
+      const name = (a.name || "").toLowerCase()
+      const email = (a.email || "").toLowerCase()
+      return name.includes(query) || email.includes(query)
+    })
+  }, [attendees, attendeeSearch])
 
   const renderSourceBadge = useCallback((source?: "qr" | "manual") => {
     if (!source) return null
@@ -597,18 +611,33 @@ export default function AgentDashboardPage() {
             ) : attendees.length === 0 ? (
               <div className="text-sm text-zinc-500">No attendees found.</div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-zinc-50">
-                    <th className="text-left p-3">Name</th>
-                    <th className="text-left p-3">Email</th>
-                    <th className="text-left p-3">Ticket</th>
-                    <th className="text-center p-3">Pre-Conf</th>
-                    <th className="text-center p-3">Main Conf</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendees.map((a) => {
+              <>
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    placeholder="Search by name or email…"
+                    value={attendeeSearch}
+                    onChange={(e) => setAttendeeSearch(e.target.value)}
+                    className="w-full px-4 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  {attendeeSearch && (
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Showing {filteredAttendees.length} of {attendees.length} attendees
+                    </p>
+                  )}
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-zinc-50">
+                      <th className="text-left p-3">Name</th>
+                      <th className="text-left p-3">Email</th>
+                      <th className="text-left p-3">Ticket</th>
+                      <th className="text-center p-3">Pre-Conf</th>
+                      <th className="text-center p-3">Main Conf</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAttendees.map((a) => {
                     const eligibleForPreConf = Boolean(a.preConferenceQrCode)
                     const preConfCheckedIn = a.preConferenceCheckInStatus === "checked-in"
 
@@ -666,6 +695,7 @@ export default function AgentDashboardPage() {
                   })}
                 </tbody>
               </table>
+              </>
             )}
           </div>
         </div>
