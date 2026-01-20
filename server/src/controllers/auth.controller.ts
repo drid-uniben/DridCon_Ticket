@@ -101,9 +101,10 @@ class AuthController {
       }
 
       // Handle file upload - multer stores the file info in req.file
-      const paymentProof = req.file
-        ? `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${req.file.filename}`
-        : '';
+      let paymentProof = '';
+      if (req.file) {
+        paymentProof = `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${req.file.filename}`;
+      }
 
       if (!name || !email || !phoneNumber || !ticketType) {
         throw new BadRequestError(

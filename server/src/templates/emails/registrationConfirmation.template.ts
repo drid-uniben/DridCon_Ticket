@@ -1,4 +1,4 @@
-/* eslint-disable max-len */
+/* eslint-disable max-len, indent, multiline-ternary */
 import {
   containerStyles,
   cardStyles,

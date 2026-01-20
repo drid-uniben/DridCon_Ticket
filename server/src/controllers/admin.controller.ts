@@ -14,8 +14,10 @@ import {
   ForbiddenError,
 } from '../utils/customErrors';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
-import { recordScanAttempt } from '../services/scanHistory.service';
-import { getLatestSuccessfulCheckInSourcesForAttendees } from '../services/scanHistory.service';
+import {
+  recordScanAttempt,
+  getLatestSuccessfulCheckInSourcesForAttendees,
+} from '../services/scanHistory.service';
 import passwordGenerator from '../utils/passwordGenerator';
 import emailService from '../services/email.service';
 import { generateQRCode } from '../services/qr.service';
@@ -201,7 +203,7 @@ class AdminController {
       }
 
       const inviteToken = crypto.randomBytes(32).toString('hex');
-      const inviteTokenExpires = new Date(Date.now() + 3600000 * 24); // 24 hours
+      const inviteTokenExpires = new Date(Date.now() + (3600000 * 24)); // 24 hours
 
       await User.create({
         email,
@@ -428,7 +430,7 @@ class AdminController {
       attendee.preConferenceInviteSent = true;
       attendee.preConferenceInviteResponse = 'pending';
       attendee.inviteToken = inviteToken;
-      attendee.inviteTokenExpires = new Date(Date.now() + 3600000 * 24 * 7); // 7 days
+      attendee.inviteTokenExpires = new Date(Date.now() + (3600000 * 24 * 7)); // 7 days
       await attendee.save();
 
       // Send email with invite
@@ -662,7 +664,7 @@ class AdminController {
         throw new BadRequestError('Session type is required for premium ticket types.');
       }
 
-      let attendeeData: any = {
+      const attendeeData: any = {
         name: name || 'Instant Check-in',
         email,
         phoneNumber: 'N/A',
@@ -832,10 +834,10 @@ class AdminController {
         return;
       }
 
-      const checkedInField =
-        attendee.ticketType === TicketType.LECTURER_PREMIUM
-          ? attendee.mainConferenceCheckInStatus
-          : attendee.checkInStatus;
+      let checkedInField = attendee.checkInStatus;
+      if (attendee.ticketType === TicketType.LECTURER_PREMIUM) {
+        checkedInField = attendee.mainConferenceCheckInStatus ?? attendee.checkInStatus;
+      }
 
       if (checkedInField === CheckInStatus.CHECKED_IN) {
         throw new BadRequestError('This ticket has already been used.');

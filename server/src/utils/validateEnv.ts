@@ -3,16 +3,6 @@ import { cleanEnv, str, port, url, email, num, makeValidator } from 'envalid';
 dotenv.config();
 
 const validateEnv = (): void => {
-  const emailsList = makeValidator((input: string) => {
-    const emails = input.split(',').map((e) => e.trim());
-    emails.forEach((e) => {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-        throw new Error(`Invalid email address: "${e}"`);
-      }
-    });
-    return emails;
-  });
-
   const extendedEmail = makeValidator((input: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     // Extract email from "Display Name <email@domain.com>" format if present
