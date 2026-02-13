@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { Response } from 'express';
 import asyncHandler from '../utils/asyncHandler';
 import User, { CheckInStatus, TicketType, UserRole } from '../model/user.model';
