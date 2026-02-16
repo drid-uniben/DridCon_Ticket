@@ -1,0 +1,67 @@
+name: "Feature request"
+description: Suggest an improvement or new capability.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature.
+
+        If you plan to implement it, please read:
+        https://github.com/drid-uniben/DridCon_Ticket/blob/dev/CONTRIBUTING.md
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - client (Next.js)
+        - server (Express API)
+        - admin/agent flows
+        - email/notifications
+        - docs
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: "As a ..., I want ..., so that ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What do you want to change/add?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you considered.
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope & acceptance criteria
+      description: Define what "done" means.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have searched existing issues to avoid duplicates.
+          required: true
