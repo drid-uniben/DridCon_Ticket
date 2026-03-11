@@ -16,16 +16,17 @@ This project follows the Code of Conduct in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT
 Prerequisites:
 
 - Node.js (recommended 20+)
+- pnpm
 - MongoDB access (local or hosted)
 
 Install dependencies:
 
 ```bash
-cd server && npm install
-cd ../client && npm install
+cd server && pnpm install
+cd ../client && pnpm install
 ```
 
-Note: CI uses `npm ci` (not `npm install`) in both `client/` and `server/`. If you update dependencies, make sure `package-lock.json` is updated and committed.
+Note: CI uses `pnpm install --frozen-lockfile` in both `client/` and `server/`. If you update dependencies, make sure `pnpm-lock.yaml` is updated and committed.
 
 Create environment files:
 
@@ -36,10 +37,10 @@ Run locally:
 
 ```bash
 cd server
-npm run dev
+pnpm dev
 
 cd ../client
-npm run dev -- -p 3001
+pnpm dev -- -p 3001
 ```
 
 ## Branching & workflow
@@ -56,7 +57,7 @@ This repository includes workflows under `.github/workflows/` that automate part
 
 Before you start coding:
 
-- Ensure the issue has been added to the GitHub Project named **“DridCon Ticket System”** by maintainers.
+- Ensure the issue has been added to the GitHub Project named **"DridCon Ticket System"** by maintainers.
 - Ensure the issue is in **Status = Unclaimed**.
 
 To claim the issue, comment exactly:
@@ -68,9 +69,9 @@ claim
 Rules:
 
 - The comment must be only `claim` (case-insensitive; whitespace/newlines are ignored).
-- If successful, you’ll be assigned to the issue and the project Status will move to **Claimed**.
+- If successful, you'll be assigned to the issue and the project Status will move to **Claimed**.
 
-### 2) If you can’t continue, disclaim the issue
+### 2) If you can't continue, disclaim the issue
 
 Comment exactly:
 
@@ -85,7 +86,7 @@ If you are assigned, automation will unassign you and move the project Status ba
 - Create your branch from `dev`.
 - Open a PR targeting `dev`.
 
-Linking matters because other automation (like moving an issue to “In Review”) reads the PR body to find the related issue.
+Linking matters because other automation (like moving an issue to "In Review") reads the PR body to find the related issue.
 
 Recommended:
 
@@ -144,14 +145,14 @@ This will add the `awaiting-author` label (and remove `awaiting-review` if prese
 
 Two CI workflows run on pull requests to `dev` and `main`:
 
-- Client CI: `npm ci` + `npm run lint` + `npm run build` in `client/`
-- Server CI: `npm ci` + `npm run lint` + `npm run build` in `server/`
+- Client CI: `pnpm install --frozen-lockfile` + `pnpm lint` + `pnpm build` in `client/`
+- Server CI: `pnpm install --frozen-lockfile` + `pnpm lint` + `pnpm build` in `server/`
 
 Before opening a PR, run locally:
 
 ```bash
-cd client && npm ci && npm run lint && npm run build
-cd ../server && npm ci && npm run lint && npm run build
+cd client && pnpm install --frozen-lockfile && pnpm lint && pnpm build
+cd ../server && pnpm install --frozen-lockfile && pnpm lint && pnpm build
 ```
 
 ## Coding standards
@@ -180,14 +181,14 @@ cd ../server && npm ci && npm run lint && npm run build
 Run linters before opening a PR:
 
 ```bash
-cd server && npm run lint
-cd ../client && npm run lint
+cd server && pnpm lint
+cd ../client && pnpm lint
 ```
 
 Auto-fix backend lint where possible:
 
 ```bash
-cd server && npm run lint:fix
+cd server && pnpm lint:fix
 ```
 
 ## API documentation (Swagger)
@@ -200,8 +201,8 @@ If you change endpoints, update `server/swagger.yaml` in the same PR so the docs
 
 - [ ] PR targets `dev`
 - [ ] Runs `server` + `client` locally without errors
-- [ ] `npm run lint` passes in both `server/` and `client/`
-- [ ] `npm run build` passes in both `server/` and `client/`
+- [ ] `pnpm lint` passes in both `server/` and `client/`
+- [ ] `pnpm build` passes in both `server/` and `client/`
 - [ ] Updated docs (README/Swagger) if behavior or env vars changed
 - [ ] Included any migration notes (Mongo schema changes, new env vars)
 
