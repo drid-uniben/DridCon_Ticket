@@ -10,7 +10,7 @@ Ticket registration + QR-based check-in system for DridCon.
 ## Prerequisites
 
 - Node.js (recommended: 20+)
-- npm
+- pnpm
 - MongoDB (local or hosted)
 
 ## Quick start (local dev)
@@ -19,9 +19,9 @@ Ticket registration + QR-based check-in system for DridCon.
 
 ```bash
 cd server
-npm install
+pnpm install
 cp .env.example .env  # if you create one; otherwise create server/.env manually
-npm run dev
+pnpm dev
 ```
 
 The backend serves:
@@ -36,10 +36,10 @@ Run the frontend on a different port than the backend.
 
 ```bash
 cd client
-npm install
+pnpm install
 
 # Option A (recommended): keep backend on 3000, run frontend on 3001
-npm run dev -- -p 3001
+pnpm dev -- -p 3001
 
 # Option B: run backend on 4000 (set server PORT=4000) and keep frontend on 3000
 ```
@@ -76,7 +76,7 @@ Email (SMTP):
 - `SMTP_PASS`
 - `EMAIL_FROM`: supports `Name <email@domain.com>` format
 
-Admin bootstrap (used by `npm run seed:admin`):
+Admin bootstrap (used by `pnpm seed:admin`):
 
 - `ADMIN_NAME`
 - `ADMIN_EMAIL`
@@ -103,22 +103,22 @@ Note: Next.js `remotePatterns` for images also relies on `NEXT_PUBLIC_API_URL` t
 
 ```bash
 cd server
-npm run dev        # ts-node + nodemon
-npm run build      # tsc -> dist/
-npm start          # node dist/index.js
-npm run lint
-npm run lint:fix
-npm run seed:admin
+pnpm dev        # ts-node + nodemon
+pnpm build      # tsc -> dist/
+pnpm start          # node dist/index.js
+pnpm lint
+pnpm lint:fix
+pnpm seed:admin
 ```
 
 ### Frontend
 
 ```bash
 cd client
-npm run dev
-npm run build
-npm start
-npm run lint
+pnpm dev
+pnpm build
+pnpm start
+pnpm lint
 ```
 
 ## API routes (high level)
@@ -137,7 +137,7 @@ Registration supports uploading a `paymentProof` file (JPEG/PNG, max 3MB). Uploa
 
 ## Troubleshooting
 
-- Port conflict: backend defaults to `3000` and Next.js also defaults to `3000`. Run the frontend with `npm run dev -- -p 3001` or change backend `PORT`.
+- Port conflict: backend defaults to `3000` and Next.js also defaults to `3000`. Run the frontend with `pnpm dev -- -p 3001` or change backend `PORT`.
 - CORS issues: ensure `FRONTEND_URL` matches the exact frontend origin (including port) and uses `http(s)://`.
 - Swagger mismatch: `/api-docs` renders `server/swagger.yaml`; if endpoints/servers don’t match `/api/v1`, update the spec accordingly.
 
