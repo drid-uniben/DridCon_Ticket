@@ -1,290 +1,305 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE ||
-  "http://localhost:3000/api/v1";
+	process.env.NEXT_PUBLIC_API_URL ||
+	process.env.NEXT_PUBLIC_API_BASE ||
+	"http://localhost:3000/api/v1";
 
 // IndexedDB helpers
 const initDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !window.indexedDB) {
-      reject(new Error("IndexedDB not supported"));
-      return;
-    }
+	return new Promise((resolve, reject) => {
+		if (typeof window === "undefined" || !window.indexedDB) {
+			reject(new Error("IndexedDB not supported"));
+			return;
+		}
 
-    const request = indexedDB.open("dridcon-portal", 1);
+		const request = indexedDB.open("dridcon-portal", 1);
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+		request.onerror = () => reject(request.error);
+		request.onsuccess = () => resolve(request.result);
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains("tokens"))
-        db.createObjectStore("tokens", { keyPath: "id" });
-      if (!db.objectStoreNames.contains("userData"))
-        db.createObjectStore("userData", { keyPath: "id" });
-    };
-  });
+		request.onupgradeneeded = (event) => {
+			const db = (event.target as IDBOpenDBRequest).result;
+			if (!db.objectStoreNames.contains("tokens"))
+				db.createObjectStore("tokens", { keyPath: "id" });
+			if (!db.objectStoreNames.contains("userData"))
+				db.createObjectStore("userData", { keyPath: "id" });
+		};
+	});
 };
 
 export const getToken = async (key: string): Promise<string | null> => {
-  try {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(["tokens"], "readonly");
-      const store = tx.objectStore("tokens");
-      const req = store.get(key);
-      req.onsuccess = () => resolve(req.result ? req.result.value : null);
-      req.onerror = () => reject(req.error);
-    });
-  } catch (error) {
-    console.error("getToken error", error);
-    return null;
-  }
+	try {
+		const db = await initDB();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(["tokens"], "readonly");
+			const store = tx.objectStore("tokens");
+			const req = store.get(key);
+			req.onsuccess = () => resolve(req.result ? req.result.value : null);
+			req.onerror = () => reject(req.error);
+		});
+	} catch (error) {
+		console.error("getToken error", error);
+		return null;
+	}
 };
 
 export const saveToken = async (
-  key: string,
-  value: string,
+	key: string,
+	value: string,
 ): Promise<boolean> => {
-  try {
-    const db = await initDB();
-    return await new Promise((resolve) => {
-      const tx = db.transaction(["tokens"], "readwrite");
-      const store = tx.objectStore("tokens");
-      const req = store.put({ id: key, value, timestamp: Date.now() });
-      req.onsuccess = () => resolve(true);
-      req.onerror = () => resolve(false);
-    });
-  } catch (error) {
-    console.error("saveToken error", error);
-    return false;
-  }
+	try {
+		const db = await initDB();
+		return await new Promise((resolve) => {
+			const tx = db.transaction(["tokens"], "readwrite");
+			const store = tx.objectStore("tokens");
+			const req = store.put({ id: key, value, timestamp: Date.now() });
+			req.onsuccess = () => resolve(true);
+			req.onerror = () => resolve(false);
+		});
+	} catch (error) {
+		console.error("saveToken error", error);
+		return false;
+	}
 };
 
 export const saveUserData = async (userData: unknown): Promise<boolean> => {
-  try {
-    const db = await initDB();
-    return await new Promise((resolve) => {
-      const tx = db.transaction(["userData"], "readwrite");
-      const store = tx.objectStore("userData");
-      const req = store.put({ id: "currentUser", value: userData });
-      req.onsuccess = () => resolve(true);
-      req.onerror = () => resolve(false);
-    });
-  } catch (error) {
-    console.error("saveUserData error", error);
-    return false;
-  }
+	try {
+		const db = await initDB();
+		return await new Promise((resolve) => {
+			const tx = db.transaction(["userData"], "readwrite");
+			const store = tx.objectStore("userData");
+			const req = store.put({ id: "currentUser", value: userData });
+			req.onsuccess = () => resolve(true);
+			req.onerror = () => resolve(false);
+		});
+	} catch (error) {
+		console.error("saveUserData error", error);
+		return false;
+	}
 };
 
 export const getUserData = async (): Promise<unknown | null> => {
-  try {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(["userData"], "readonly");
-      const store = tx.objectStore("userData");
-      const req = store.get("currentUser");
-      req.onsuccess = () => resolve(req.result ? req.result.value : null);
-      req.onerror = () => reject(req.error);
-    });
-  } catch (error) {
-    console.error("getUserData error", error);
-    return null;
-  }
+	try {
+		const db = await initDB();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(["userData"], "readonly");
+			const store = tx.objectStore("userData");
+			const req = store.get("currentUser");
+			req.onsuccess = () => resolve(req.result ? req.result.value : null);
+			req.onerror = () => reject(req.error);
+		});
+	} catch (error) {
+		console.error("getUserData error", error);
+		return null;
+	}
 };
 
 export const clearAllData = async (): Promise<boolean> => {
-  try {
-    const db = await initDB();
-    return await new Promise((resolve) => {
-      const tx = db.transaction(["tokens", "userData"], "readwrite");
-      const tokens = tx.objectStore("tokens");
-      const users = tx.objectStore("userData");
-      tokens.clear();
-      users.clear();
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    });
-  } catch (error) {
-    console.error("clearAllData error", error);
-    return false;
-  }
+	try {
+		const db = await initDB();
+		return await new Promise((resolve) => {
+			const tx = db.transaction(["tokens", "userData"], "readwrite");
+			const tokens = tx.objectStore("tokens");
+			const users = tx.objectStore("userData");
+			tokens.clear();
+			users.clear();
+			tx.oncomplete = () => resolve(true);
+			tx.onerror = () => resolve(false);
+		});
+	} catch (error) {
+		console.error("clearAllData error", error);
+		return false;
+	}
 };
 
 // Axios instance
 const api: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
-  timeout: 30000,
-  withCredentials: true, // Allow cookies to be sent
+	baseURL: API_URL,
+	headers: { "Content-Type": "application/json" },
+	timeout: 30000,
+	withCredentials: true,
 });
 
 // Attach token from IndexedDB
 api.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await getToken("accessToken");
-      if (token && config.headers)
-        config.headers.Authorization = `Bearer ${token}`;
-    } catch {
-      // ignore
-    }
-    return config;
-  },
-  (err) => Promise.reject(err),
+	async (config) => {
+		try {
+			const token = await getToken("accessToken");
+			if (token && config.headers)
+				config.headers.Authorization = `Bearer ${token}`;
+		} catch {
+			// ignore
+		}
+		return config;
+	},
+	(err) => Promise.reject(err),
 );
 
 // Response handler for token refresh
 api.interceptors.response.use(
-  (res) => res,
-  async (err: AxiosError) => {
-    const originalRequest = err.config as typeof err.config & {
-      _retry?: boolean;
-    };
+	(res) => res,
+	async (err: AxiosError) => {
+		const originalRequest = err.config as typeof err.config & {
+			_retry?: boolean;
+		};
 
-    if (
-      err.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      originalRequest.url !== "/auth/refresh-token"
-    ) {
-      originalRequest._retry = true; // Mark request to prevent infinite retry loops
-      try {
-        const { data } = await api.post("/auth/refresh-token");
-        if (data?.accessToken) {
-          await saveToken("accessToken", data.accessToken);
-          api.defaults.headers.common["Authorization"] =
-            `Bearer ${data.accessToken}`;
-          originalRequest.headers!.Authorization = `Bearer ${data.accessToken}`;
-          return api(originalRequest); // Retry the original request with the new token
-        }
-      } catch (refreshError) {
-        // If refresh fails, clear data and redirect to login
-        await clearAllData();
-        if (typeof window !== "undefined") window.location.href = "/login";
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(err);
-  },
+		if (
+			err.response?.status === 401 &&
+			originalRequest &&
+			!originalRequest._retry &&
+			originalRequest.url !== "/auth/refresh-token"
+		) {
+			originalRequest._retry = true;
+			try {
+				const { data } = await api.post("/auth/refresh-token");
+				if (data?.accessToken) {
+					await saveToken("accessToken", data.accessToken);
+					api.defaults.headers.common["Authorization"] =
+						`Bearer ${data.accessToken}`;
+					originalRequest.headers!.Authorization = `Bearer ${data.accessToken}`;
+					return api(originalRequest);
+				}
+			} catch (refreshError) {
+				await clearAllData();
+				if (typeof window !== "undefined") window.location.href = "/login";
+				return Promise.reject(refreshError);
+			}
+		}
+		return Promise.reject(err);
+	},
 );
 
 // Auth API
 export const authApi = {
-  register: async (data: Record<string, unknown>) => {
-    const form = new FormData();
-    Object.entries(data).forEach(([k, v]) => {
-      if (v !== undefined && v !== null) form.append(k, v as unknown as string);
-    });
-    const res = await api.post("/auth/register", form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return res.data;
-  },
+	register: async (data: Record<string, unknown>) => {
+		const form = new FormData();
+		Object.entries(data).forEach(([k, v]) => {
+			if (v !== undefined && v !== null) form.append(k, v as unknown as string);
+		});
+		const res = await api.post("/auth/register", form, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+		return res.data;
+	},
 
-  login: async (credentials: { email: string; password: string }) => {
-    const res = await api.post("/auth/login", credentials);
-    if (res.data?.accessToken) {
-      await saveToken("accessToken", res.data.accessToken); // Only save accessToken
-      await saveUserData(res.data.user);
-    }
-    return res.data;
-  },
+	login: async (credentials: { email: string; password: string }) => {
+		const res = await api.post("/auth/login", credentials);
+		if (res.data?.accessToken) {
+			await saveToken("accessToken", res.data.accessToken);
+			await saveUserData(res.data.user);
+		}
+		return res.data;
+	},
 
-  logout: async () => {
-    try {
-      await api.post("/auth/logout");
-    } finally {
-      await clearAllData();
-    }
-  },
+	logout: async () => {
+		try {
+			await api.post("/auth/logout");
+		} finally {
+			await clearAllData();
+		}
+	},
 
-  completeRegistration: async (data: Record<string, unknown>) => {
-    const res = await api.post("/auth/complete-registration", data);
-    return res.data;
-  },
+	completeRegistration: async (data: Record<string, unknown>) => {
+		const res = await api.post("/auth/complete-registration", data);
+		return res.data;
+	},
 
-  verifyInvite: async (token: string) => {
-    const res = await api.get(`/auth/verify-invite?token=${token}`);
-    return res.data;
-  },
+	verifyInvite: async (token: string) => {
+		const res = await api.get(`/auth/verify-invite?token=${token}`);
+		return res.data;
+	},
 
-  getMe: async () => {
-    const res = await api.get("/auth/me");
-    return res.data;
-  },
+	getMe: async () => {
+		const res = await api.get("/auth/me");
+		return res.data;
+	},
 
-  respondToPreConferenceInvite: async (data: {
-    token: string;
-    response: "yes" | "no";
-  }) => (await api.post("/auth/respond-preconf-invite", data)).data,
+	respondToPreConferenceInvite: async (data: {
+		token: string;
+		response: "yes" | "no";
+	}) => (await api.post("/auth/respond-preconf-invite", data)).data,
 };
 
 // Admin API
 export const adminApi = {
-  createAgent: async (data: { name: string; email: string }) =>
-    (await api.post("/admin/agents", data)).data,
-  getAgents: async () => (await api.get("/admin/agents")).data,
-  getAgentScanHistory: async (agentId: string, limit?: number) => {
-    const qs = typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : "";
-    return (await api.get(`/admin/agents/${agentId}/scan-history${qs}`)).data;
-  },
-  manualRegister: async (data: Record<string, unknown>) =>
-    (await api.post("/admin/attendees/manual", data)).data,
-  inviteAttendee: async (data: Record<string, unknown>) =>
-    (await api.post("/admin/attendees/invite", data)).data,
-  getPendingAttendees: async () =>
-    (await api.get("/admin/attendees/pending")).data,
-  approveRegistration: async (
-    id: string,
-    data: {
-      ticketType: string;
-      sessionType?: "pre-conference" | "main-conference";
-    },
-  ) => (await api.post(`/admin/attendees/${id}/approve`, data)).data,
-  declineRegistration: async (id: string) =>
-    (await api.post(`/admin/attendees/${id}/decline`)).data,
-  getAllAttendees: async () => (await api.get("/admin/attendees")).data,
-  getDashboardData: async () => (await api.get("/admin/dashboard")).data,
-  getResearcherPremiumAttendees: async () =>
-    (await api.get("/admin/attendees/researcher-premium")).data,
+	createAgent: async (data: { name: string; email: string }) =>
+		(await api.post("/admin/agents", data)).data,
+	getAgents: async () => (await api.get("/admin/agents")).data,
+	getAgentScanHistory: async (agentId: string, limit?: number) => {
+		const qs =
+			typeof limit === "number"
+				? `?limit=${encodeURIComponent(String(limit))}`
+				: "";
+		return (await api.get(`/admin/agents/${agentId}/scan-history${qs}`)).data;
+	},
+	manualRegister: async (data: Record<string, unknown>) =>
+		(await api.post("/admin/attendees/manual", data)).data,
+	inviteAttendee: async (data: Record<string, unknown>) =>
+		(await api.post("/admin/attendees/invite", data)).data,
+	getPendingAttendees: async () =>
+		(await api.get("/admin/attendees/pending")).data,
+	approveRegistration: async (
+		id: string,
+		data: {
+			ticketType: string;
+			sessionType?: "pre-conference" | "main-conference";
+		},
+	) => (await api.post(`/admin/attendees/${id}/approve`, data)).data,
+	declineRegistration: async (id: string) =>
+		(await api.post(`/admin/attendees/${id}/decline`)).data,
 
-  sendPreConferenceInvite: async (data: { attendeeId: string }) =>
-    (await api.post("/admin/attendees/send-preconf-invite", data)).data,
-  quickRegisterWithTickets: async (data: {
-    name?: string;
-    email: string;
-    ticketType: string;
-    sendBothTickets?: boolean;
-  }) => (await api.post("/admin/attendees/quick-with-tickets", data)).data,
-  instantCheckIn: async (data: {
-    name?: string;
-    email: string;
-    ticketType: string;
-    sessionType?: 'pre-conference' | 'main-conference';
-  }) => (await api.post("/admin/attendees/instant-checkin", data)).data,
+	// Updated: accepts an optional query string for search, filter, and pagination
+	getAllAttendees: async (queryString?: string) =>
+		(await api.get(`/admin/attendees${queryString ? `?${queryString}` : ""}`))
+			.data,
 
-  manualCheckInPreConference: async (attendeeId: string) =>
-    (await api.post("/admin/attendees/pre-conference/manual-check-in", { attendeeId })).data,
-  manualCheckInMainConference: async (attendeeId: string) =>
-    (await api.post("/admin/attendees/main-conference/manual-check-in", { attendeeId })).data,
+	getDashboardData: async () => (await api.get("/admin/dashboard")).data,
+	getResearcherPremiumAttendees: async () =>
+		(await api.get("/admin/attendees/researcher-premium")).data,
+	sendPreConferenceInvite: async (data: { attendeeId: string }) =>
+		(await api.post("/admin/attendees/send-preconf-invite", data)).data,
+	quickRegisterWithTickets: async (data: {
+		name?: string;
+		email: string;
+		ticketType: string;
+		sendBothTickets?: boolean;
+	}) => (await api.post("/admin/attendees/quick-with-tickets", data)).data,
+	instantCheckIn: async (data: {
+		name?: string;
+		email: string;
+		ticketType: string;
+		sessionType?: "pre-conference" | "main-conference";
+	}) => (await api.post("/admin/attendees/instant-checkin", data)).data,
+	manualCheckInPreConference: async (attendeeId: string) =>
+		(
+			await api.post("/admin/attendees/pre-conference/manual-check-in", {
+				attendeeId,
+			})
+		).data,
+	manualCheckInMainConference: async (attendeeId: string) =>
+		(
+			await api.post("/admin/attendees/main-conference/manual-check-in", {
+				attendeeId,
+			})
+		).data,
 };
 
 // Scan API
 export const scanApi = {
-  scanQR: async (qrCode: string) => (await api.post("/scan", { qrCode })).data,
-  checkInPreConference: async (qrCode: string) =>
-    (await api.post("/scan/pre-conference/check-in", { qrCode })).data,
-  checkInMainConference: async (qrCode: string) =>
-    (await api.post("/scan/main-conference/check-in", { qrCode })).data,
-  getAttendees: async () => (await api.get("/scan/attendees")).data,
-  manualCheckInPreConference: async (attendeeId: string) =>
-    (await api.post("/scan/pre-conference/manual-check-in", { attendeeId })).data,
-  manualCheckInMainConference: async (attendeeId: string) =>
-    (await api.post("/scan/main-conference/manual-check-in", { attendeeId })).data,
-  getScanHistory: async () => (await api.get("/scan/history")).data,
+	scanQR: async (qrCode: string) => (await api.post("/scan", { qrCode })).data,
+	checkInPreConference: async (qrCode: string) =>
+		(await api.post("/scan/pre-conference/check-in", { qrCode })).data,
+	checkInMainConference: async (qrCode: string) =>
+		(await api.post("/scan/main-conference/check-in", { qrCode })).data,
+	getAttendees: async () => (await api.get("/scan/attendees")).data,
+	manualCheckInPreConference: async (attendeeId: string) =>
+		(await api.post("/scan/pre-conference/manual-check-in", { attendeeId }))
+			.data,
+	manualCheckInMainConference: async (attendeeId: string) =>
+		(await api.post("/scan/main-conference/manual-check-in", { attendeeId }))
+			.data,
+	getScanHistory: async () => (await api.get("/scan/history")).data,
 };
 
 export default api;
