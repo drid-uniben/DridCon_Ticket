@@ -308,7 +308,6 @@ export default function AdminDashboardPage() {
 				setLoading(false);
 			}
 		},
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[attendeesQuery],
 	);
 
@@ -443,7 +442,7 @@ export default function AdminDashboardPage() {
 			fetchResearcherPremium().catch(() => {});
 			fetchAttendees().catch(() => {});
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [activeTab]);
 
 	// ── Actions ───────────────────────────────────────────────────────────────
@@ -785,7 +784,7 @@ export default function AdminDashboardPage() {
 					confirmState.open ? (
 						<div className='space-y-2'>
 							<div>
-								You're about to{" "}
+								{"You're about to "}
 								<span className='font-medium'>
 									{confirmState.action === "sendPreConferenceInvite"
 										? "send a pre-conference invite"
@@ -810,7 +809,7 @@ export default function AdminDashboardPage() {
 								</div>
 							) : confirmState.action === "manualCheckIn" ? (
 								<div className='text-sm text-red-600'>
-									This action is not reversible. Please confirm you're checking
+									This action is not reversible. Please confirm you&apos;re checking
 									in the correct person.
 								</div>
 							) : confirmState.action === "sendPreConferenceInvite" ? (
@@ -1088,7 +1087,7 @@ export default function AdminDashboardPage() {
 											) : imageError ? (
 												<div className='rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700'>
 													<div className='font-medium mb-1'>
-														Couldn't load receipt
+														{"Couldn't load receipt"}
 													</div>
 													<div className='text-red-700/90'>{imageError}</div>
 													<div className='mt-2'>
@@ -1873,8 +1872,7 @@ export default function AdminDashboardPage() {
 							{manualSubTab === "instant" && (
 								<div>
 									<p className='text-sm text-zinc-500 mb-4'>
-										Instant registration and check-in. No tickets sent -
-										attendee is checked in immediately.
+										{"Instant registration and check-in. No tickets sent — attendee is checked in immediately."}
 									</p>
 									<form
 										onSubmit={handleInstantCheckIn}
@@ -1950,7 +1948,7 @@ export default function AdminDashboardPage() {
 												</select>
 												<p className='text-xs text-zinc-500 mt-2'>
 													{instantForm.sessionType === "pre-conference"
-														? "This will check the attendee in for the pre-conference and email them a ticket for the main conference."
+														? "This will check the attendee in for the pre-conference and email them a main conference ticket."
 														: "This will check the attendee in for the main conference. No email will be sent."}
 												</p>
 											</div>

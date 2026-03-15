@@ -128,10 +128,7 @@ class AdminController {
         ticketType,
         designation,
         department,
-        wantsPreConference:
-          ticketType === TicketType.RESEARCHER_PREMIUM
-            ? wantsPreConference
-            : undefined,
+        wantsPreConference: ticketType === TicketType.RESEARCHER_PREMIUM ? wantsPreConference : undefined,
         preConferenceDeclinedDuringReg:
           ticketType === TicketType.RESEARCHER_PREMIUM && !wantsPreConference,
         paymentStatus: PaymentStatus.CONFIRMED,
@@ -200,7 +197,7 @@ class AdminController {
       }
 
       const inviteToken = crypto.randomBytes(32).toString('hex');
-      const inviteTokenExpires = new Date(Date.now() + 3600000 * 24); // 24 hours
+      const inviteTokenExpires = new Date(Date.now() + (3600000 * 24)); // 24 hours
 
       await User.create({
         email,
@@ -420,7 +417,7 @@ class AdminController {
       attendee.preConferenceInviteSent = true;
       attendee.preConferenceInviteResponse = 'pending';
       attendee.inviteToken = inviteToken;
-      attendee.inviteTokenExpires = new Date(Date.now() + 3600000 * 24 * 7); // 7 days
+      attendee.inviteTokenExpires = new Date(Date.now() + (3600000 * 24 * 7)); // 7 days
       await attendee.save();
 
       await emailService.sendPreConferenceInvite(
@@ -490,8 +487,7 @@ class AdminController {
       const skip = (page - 1) * pageSize;
 
       // ── Build filter ──────────────────────────────────────────────────────
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filter: Record<string, any> = { role: UserRole.USER };
+      const filter: Record<string, unknown> = { role: UserRole.USER };
 
       // 1. Text search on name or email
       if (search.trim()) {
@@ -515,10 +511,7 @@ class AdminController {
       // 3. Check-in status
       if (checkIn !== 'all') {
         const isCheckedIn = checkIn === 'checked-in';
-        const checkedInValue = isCheckedIn
-          ? CheckInStatus.CHECKED_IN
-          : CheckInStatus.NOT_CHECKED_IN;
-        const notCheckedInValue = CheckInStatus.NOT_CHECKED_IN;
+        const checkedInValue = isCheckedIn ? CheckInStatus.CHECKED_IN : CheckInStatus.NOT_CHECKED_IN;
 
         if (checkInSession === 'pre-conference') {
           filter.preConferenceCheckInStatus = checkedInValue;
@@ -526,7 +519,7 @@ class AdminController {
           if (isCheckedIn) {
             // Either the session-specific field OR the legacy field is checked in
             filter.$or = [
-              ...(filter.$or ?? []),
+              ...((filter.$or as unknown[]) ?? []),
               { mainConferenceCheckInStatus: CheckInStatus.CHECKED_IN },
               { checkInStatus: CheckInStatus.CHECKED_IN },
             ];
@@ -540,7 +533,7 @@ class AdminController {
           // "any" session
           if (isCheckedIn) {
             filter.$or = [
-              ...(filter.$or ?? []),
+              ...((filter.$or as unknown[]) ?? []),
               { checkInStatus: CheckInStatus.CHECKED_IN },
               { preConferenceCheckInStatus: CheckInStatus.CHECKED_IN },
               { mainConferenceCheckInStatus: CheckInStatus.CHECKED_IN },
@@ -737,10 +730,7 @@ class AdminController {
       const isLecturerPremium = ticketType === TicketType.LECTURER_PREMIUM;
       const isResearcherPremium = ticketType === TicketType.RESEARCHER_PREMIUM;
 
-      const effectiveSessionType =
-        isLecturerPremium || isResearcherPremium
-          ? sessionType
-          : 'main-conference';
+      const effectiveSessionType = isLecturerPremium || isResearcherPremium ? sessionType : 'main-conference';
 
       if ((isLecturerPremium || isResearcherPremium) && !effectiveSessionType) {
         throw new BadRequestError(
@@ -748,8 +738,7 @@ class AdminController {
         );
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const attendeeData: any = {
+      const attendeeData: Record<string, unknown> = {
         name: name || 'Instant Check-in',
         email,
         phoneNumber: 'N/A',
@@ -765,7 +754,7 @@ class AdminController {
       if (effectiveSessionType === 'pre-conference') {
         attendeeData.preConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
         attendeeData.preConferenceCheckedInAt = new Date();
-        attendeeData.preConferenceCheckedInBy = req.user._id as any;
+        attendeeData.preConferenceCheckedInBy = req.user._id;
 
         const mainConf = await generateQRCode({ email }, 'main-conference');
         attendeeData.mainConferenceQrCode = mainConf.token;
@@ -774,19 +763,19 @@ class AdminController {
         const mainConfUrl = `${process.env.API_URL}${mainConf.filePath}`;
         await emailService.sendTicketWithQR(
           email,
-          attendeeData.name,
+          attendeeData.name as string,
           mainConfUrl,
           ticketType
         );
       } else {
         attendeeData.checkInStatus = CheckInStatus.CHECKED_IN;
         attendeeData.checkedInAt = new Date();
-        attendeeData.checkedInBy = req.user._id as any;
+        attendeeData.checkedInBy = req.user._id;
 
         if (isLecturerPremium) {
           attendeeData.mainConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
           attendeeData.mainConferenceCheckedInAt = new Date();
-          attendeeData.mainConferenceCheckedInBy = req.user._id as any;
+          attendeeData.mainConferenceCheckedInBy = req.user._id;
         }
       }
 
@@ -839,7 +828,7 @@ class AdminController {
 
       attendee.preConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
       attendee.preConferenceCheckedInAt = new Date();
-      attendee.preConferenceCheckedInBy = req.user._id as any;
+      attendee.preConferenceCheckedInBy = req.user._id as never;
       await attendee.save();
 
       await recordScanAttempt({
@@ -896,7 +885,7 @@ class AdminController {
 
         attendee.checkInStatus = CheckInStatus.CHECKED_IN;
         attendee.checkedInAt = new Date();
-        attendee.checkedInBy = req.user._id as any;
+        attendee.checkedInBy = req.user._id as never;
         await attendee.save();
 
         await recordScanAttempt({
@@ -929,11 +918,11 @@ class AdminController {
       if (attendee.ticketType === TicketType.LECTURER_PREMIUM) {
         attendee.mainConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
         attendee.mainConferenceCheckedInAt = new Date();
-        attendee.mainConferenceCheckedInBy = req.user._id as any;
+        attendee.mainConferenceCheckedInBy = req.user._id as never;
       } else {
         attendee.checkInStatus = CheckInStatus.CHECKED_IN;
         attendee.checkedInAt = new Date();
-        attendee.checkedInBy = req.user._id as any;
+        attendee.checkedInBy = req.user._id as never;
       }
 
       await attendee.save();
