@@ -121,7 +121,6 @@ class AdminController {
         ticketType === TicketType.RESEARCHER_PREMIUM &&
         wantsPreConference === true;
 
-      // Create user first
       const attendee = await User.create({
         name,
         email,
@@ -129,8 +128,7 @@ class AdminController {
         ticketType,
         designation,
         department,
-        wantsPreConference:
-          ticketType === TicketType.RESEARCHER_PREMIUM ? wantsPreConference : undefined,
+        wantsPreConference: ticketType === TicketType.RESEARCHER_PREMIUM ? wantsPreConference : undefined,
         preConferenceDeclinedDuringReg:
           ticketType === TicketType.RESEARCHER_PREMIUM && !wantsPreConference,
         paymentStatus: PaymentStatus.CONFIRMED,
@@ -139,9 +137,7 @@ class AdminController {
         ticketsent: true,
       });
 
-      // Send both tickets for Lecturer Premium or Researcher Premium with pre-conference
       if (isLecturerPremium || isResearcherPremiumWithPreConference) {
-        // Send pre-conference ticket
         const preConf = await generateQRCode({ email }, 'pre-conference');
         attendee.preConferenceQrCode = preConf.token;
 
@@ -153,7 +149,6 @@ class AdminController {
           ticketType
         );
 
-        // Send main conference ticket
         const mainConf = await generateQRCode({ email }, 'main-conference');
         attendee.mainConferenceQrCode = mainConf.token;
 
@@ -167,7 +162,6 @@ class AdminController {
 
         await attendee.save();
       } else {
-        // Single ticket for others
         const { token, filePath } = await generateQRCode({ email });
         attendee.qrCode = token;
         await attendee.save();
@@ -276,7 +270,6 @@ class AdminController {
         attendee.ticketType === TicketType.RESEARCHER_PREMIUM &&
         attendee.wantsPreConference === true;
 
-      // Handle Lecturer Premium OR Researcher Premium with pre-conference
       if (isLecturerPremium || isResearcherPremiumWithPreConference) {
         if (sessionType === 'pre-conference') {
           const { token, filePath } = await generateQRCode(
@@ -336,7 +329,6 @@ class AdminController {
           );
         }
       } else {
-        // Original logic for other ticket types
         const { token, filePath } = await generateQRCode({
           email: attendee.email,
         });
@@ -368,8 +360,6 @@ class AdminController {
       }
     }
   );
-
-  // Add new controller methods for pre-conference management:
 
   getResearcherPremiumAttendees = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
@@ -410,21 +400,18 @@ class AdminController {
         );
       }
 
-      // Don't send if they already declined during registration
       if (attendee.preConferenceDeclinedDuringReg) {
         throw new BadRequestError(
           'This attendee declined pre-conference during registration.'
         );
       }
 
-      // Don't send if they already have pre-conference ticket
       if (attendee.preConferenceQrCode) {
         throw new BadRequestError(
           'This attendee already has a pre-conference ticket.'
         );
       }
 
-      // Generate invite token
       const inviteToken = crypto.randomBytes(32).toString('hex');
 
       attendee.preConferenceInviteSent = true;
@@ -433,7 +420,6 @@ class AdminController {
       attendee.inviteTokenExpires = new Date(Date.now() + (3600000 * 24 * 7)); // 7 days
       await attendee.save();
 
-      // Send email with invite
       await emailService.sendPreConferenceInvite(
         attendee.email,
         attendee.name,
@@ -465,7 +451,6 @@ class AdminController {
       attendee.paymentStatus = PaymentStatus.DECLINED;
       await attendee.save();
 
-      // Send an email to the user about the decline.
       await emailService.sendDeclineRegistrationEmail(
         attendee.email,
         attendee.name
@@ -484,28 +469,121 @@ class AdminController {
         throw new ForbiddenError('Only administrators can view all attendees.');
       }
 
-      const attendees = await User.find({ role: UserRole.USER }).sort({
-        createdAt: -1,
-      });
+      // ── Parse query params ────────────────────────────────────────────────
+      const {
+        search = '',
+        status = 'all',
+        checkIn = 'all',
+        checkInSession = 'any',
+        page: pageRaw = '1',
+        pageSize: pageSizeRaw = '50',
+      } = req.query as Record<string, string>;
 
+      const page = Math.max(1, parseInt(pageRaw, 10) || 1);
+      const pageSize = Math.min(
+        200,
+        Math.max(1, parseInt(pageSizeRaw, 10) || 50)
+      );
+      const skip = (page - 1) * pageSize;
+
+      // ── Build filter ──────────────────────────────────────────────────────
+      const filter: Record<string, unknown> = { role: UserRole.USER };
+
+      // 1. Text search on name or email
+      if (search.trim()) {
+        const regex = new RegExp(search.trim(), 'i');
+        filter.$or = [{ name: regex }, { email: regex }];
+      }
+
+      // 2. Payment status
+      if (status !== 'all') {
+        // Validate against known values to prevent injection
+        const allowed: string[] = [
+          PaymentStatus.PENDING,
+          PaymentStatus.CONFIRMED,
+          PaymentStatus.DECLINED,
+        ];
+        if (allowed.includes(status)) {
+          filter.paymentStatus = status;
+        }
+      }
+
+      // 3. Check-in status
+      if (checkIn !== 'all') {
+        const isCheckedIn = checkIn === 'checked-in';
+        const checkedInValue = isCheckedIn ? CheckInStatus.CHECKED_IN : CheckInStatus.NOT_CHECKED_IN;
+
+        if (checkInSession === 'pre-conference') {
+          filter.preConferenceCheckInStatus = checkedInValue;
+        } else if (checkInSession === 'main-conference') {
+          if (isCheckedIn) {
+            // Either the session-specific field OR the legacy field is checked in
+            filter.$or = [
+              ...((filter.$or as unknown[]) ?? []),
+              { mainConferenceCheckInStatus: CheckInStatus.CHECKED_IN },
+              { checkInStatus: CheckInStatus.CHECKED_IN },
+            ];
+          } else {
+            filter.mainConferenceCheckInStatus = {
+              $ne: CheckInStatus.CHECKED_IN,
+            };
+            filter.checkInStatus = { $ne: CheckInStatus.CHECKED_IN };
+          }
+        } else {
+          // "any" session
+          if (isCheckedIn) {
+            filter.$or = [
+              ...((filter.$or as unknown[]) ?? []),
+              { checkInStatus: CheckInStatus.CHECKED_IN },
+              { preConferenceCheckInStatus: CheckInStatus.CHECKED_IN },
+              { mainConferenceCheckInStatus: CheckInStatus.CHECKED_IN },
+            ];
+          } else {
+            filter.checkInStatus = { $ne: CheckInStatus.CHECKED_IN };
+            filter.preConferenceCheckInStatus = {
+              $ne: CheckInStatus.CHECKED_IN,
+            };
+            filter.mainConferenceCheckInStatus = {
+              $ne: CheckInStatus.CHECKED_IN,
+            };
+          }
+        }
+      }
+
+      // ── Query ─────────────────────────────────────────────────────────────
+      const [attendees, total] = await Promise.all([
+        User.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(pageSize)
+          .lean(),
+        User.countDocuments(filter),
+      ]);
+
+      // ── Enrich with check-in sources from scan history ────────────────────
       const attendeeIds = attendees.map((a) => a._id);
-      const sourcesMap = await getLatestSuccessfulCheckInSourcesForAttendees(attendeeIds);
+      const sourcesMap =
+        await getLatestSuccessfulCheckInSourcesForAttendees(attendeeIds);
+
       const enriched = attendees.map((a) => {
-        const obj = a.toObject();
         const id = a._id.toString();
         const pre = sourcesMap.get(`${id}:pre-conference`);
         const main = sourcesMap.get(`${id}:main-conference`);
         return {
-          ...obj,
+          ...a,
           preConferenceCheckInSource: pre?.scanSource,
           mainConferenceCheckInSource: main?.scanSource,
         };
       });
 
+      // ── Response ──────────────────────────────────────────────────────────
       res.status(200).json({
         success: true,
-        count: enriched.length,
         data: enriched,
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
       });
     }
   );
@@ -545,7 +623,6 @@ class AdminController {
     }
   );
 
-  // Quick registration WITH tickets (sends QR codes)
   quickRegisterWithTickets = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
       const { name, email, ticketType, sendBothTickets } = req.body;
@@ -567,7 +644,6 @@ class AdminController {
         );
       }
 
-      // Use placeholder values for required fields
       const attendee = await User.create({
         name: name || 'Quick Registration',
         email,
@@ -587,7 +663,6 @@ class AdminController {
         (ticketType === TicketType.RESEARCHER_PREMIUM && sendBothTickets);
 
       if (needsBothTickets) {
-        // Send both tickets
         const preConf = await generateQRCode({ email }, 'pre-conference');
         attendee.preConferenceQrCode = preConf.token;
         const preConfUrl = `${process.env.API_URL}${preConf.filePath}`;
@@ -610,7 +685,6 @@ class AdminController {
 
         await attendee.save();
       } else {
-        // Single ticket
         const { token, filePath } = await generateQRCode({ email });
         attendee.qrCode = token;
         await attendee.save();
@@ -632,10 +706,9 @@ class AdminController {
     }
   );
 
-  // Instant check-in WITHOUT tickets (no emails sent, immediate check-in)
   instantCheckIn = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
-      const { name, email, ticketType, sessionType } = req.body; // sessionType is new
+      const { name, email, ticketType, sessionType } = req.body;
 
       if (req.user?.role !== UserRole.ADMIN) {
         throw new ForbiddenError(
@@ -657,14 +730,15 @@ class AdminController {
       const isLecturerPremium = ticketType === TicketType.LECTURER_PREMIUM;
       const isResearcherPremium = ticketType === TicketType.RESEARCHER_PREMIUM;
 
-      // For non-premium tickets, assume main-conference check-in
-      const effectiveSessionType = (isLecturerPremium || isResearcherPremium) ? sessionType : 'main-conference';
+      const effectiveSessionType = isLecturerPremium || isResearcherPremium ? sessionType : 'main-conference';
 
       if ((isLecturerPremium || isResearcherPremium) && !effectiveSessionType) {
-        throw new BadRequestError('Session type is required for premium ticket types.');
+        throw new BadRequestError(
+          'Session type is required for premium ticket types.'
+        );
       }
 
-      const attendeeData: any = {
+      const attendeeData: Record<string, unknown> = {
         name: name || 'Instant Check-in',
         email,
         phoneNumber: 'N/A',
@@ -673,17 +747,15 @@ class AdminController {
         department: 'N/A',
         paymentStatus: PaymentStatus.CONFIRMED,
         role: UserRole.USER,
-        ticketsent: false, // Will be set to true if main conf ticket is sent
-        checkInStatus: CheckInStatus.NOT_CHECKED_IN, // Default, will be updated
+        ticketsent: false,
+        checkInStatus: CheckInStatus.NOT_CHECKED_IN,
       };
 
       if (effectiveSessionType === 'pre-conference') {
-        // Check in for pre-conference
         attendeeData.preConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
         attendeeData.preConferenceCheckedInAt = new Date();
-        attendeeData.preConferenceCheckedInBy = (req.user._id as any);
+        attendeeData.preConferenceCheckedInBy = req.user._id;
 
-        // Send main conference ticket
         const mainConf = await generateQRCode({ email }, 'main-conference');
         attendeeData.mainConferenceQrCode = mainConf.token;
         attendeeData.ticketsent = true;
@@ -691,23 +763,20 @@ class AdminController {
         const mainConfUrl = `${process.env.API_URL}${mainConf.filePath}`;
         await emailService.sendTicketWithQR(
           email,
-          attendeeData.name,
+          attendeeData.name as string,
           mainConfUrl,
           ticketType
         );
       } else {
-        // Default (or selected) main-conference check-in
         attendeeData.checkInStatus = CheckInStatus.CHECKED_IN;
         attendeeData.checkedInAt = new Date();
-        attendeeData.checkedInBy = (req.user._id as any);
+        attendeeData.checkedInBy = req.user._id;
 
         if (isLecturerPremium) {
-          // Explicitly set mainConferenceCheckInStatus for Lecturer Premium
           attendeeData.mainConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
           attendeeData.mainConferenceCheckedInAt = new Date();
-          attendeeData.mainConferenceCheckedInBy = (req.user._id as any);
+          attendeeData.mainConferenceCheckedInBy = req.user._id;
         }
-        // No tickets sent in this case
       }
 
       const attendee = await User.create(attendeeData);
@@ -752,12 +821,14 @@ class AdminController {
       }
 
       if (attendee.preConferenceCheckInStatus === CheckInStatus.CHECKED_IN) {
-        throw new BadRequestError('This pre-conference ticket has already been used.');
+        throw new BadRequestError(
+          'This pre-conference ticket has already been used.'
+        );
       }
 
       attendee.preConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
       attendee.preConferenceCheckedInAt = new Date();
-      attendee.preConferenceCheckedInBy = req.user._id as any;
+      attendee.preConferenceCheckedInBy = req.user._id as never;
       await attendee.save();
 
       await recordScanAttempt({
@@ -814,7 +885,7 @@ class AdminController {
 
         attendee.checkInStatus = CheckInStatus.CHECKED_IN;
         attendee.checkedInAt = new Date();
-        attendee.checkedInBy = req.user._id as any;
+        attendee.checkedInBy = req.user._id as never;
         await attendee.save();
 
         await recordScanAttempt({
@@ -836,7 +907,8 @@ class AdminController {
 
       let checkedInField = attendee.checkInStatus;
       if (attendee.ticketType === TicketType.LECTURER_PREMIUM) {
-        checkedInField = attendee.mainConferenceCheckInStatus ?? attendee.checkInStatus;
+        checkedInField =
+          attendee.mainConferenceCheckInStatus ?? attendee.checkInStatus;
       }
 
       if (checkedInField === CheckInStatus.CHECKED_IN) {
@@ -846,11 +918,11 @@ class AdminController {
       if (attendee.ticketType === TicketType.LECTURER_PREMIUM) {
         attendee.mainConferenceCheckInStatus = CheckInStatus.CHECKED_IN;
         attendee.mainConferenceCheckedInAt = new Date();
-        attendee.mainConferenceCheckedInBy = req.user._id as any;
+        attendee.mainConferenceCheckedInBy = req.user._id as never;
       } else {
         attendee.checkInStatus = CheckInStatus.CHECKED_IN;
         attendee.checkedInAt = new Date();
-        attendee.checkedInBy = req.user._id as any;
+        attendee.checkedInBy = req.user._id as never;
       }
 
       await attendee.save();
